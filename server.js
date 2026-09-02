@@ -9,8 +9,6 @@ const REDIRECT_URI = "https://smart-recovery-bot.onrender.com/callback";
 
 const sessions = new Map();
 
-// Temporary server-side storage.
-// We NEVER send the access token to the browser.
 let derivSession = {
   accessToken: null,
   accounts: []
@@ -24,24 +22,17 @@ function base64url(buffer) {
     .replace(/=/g, "");
 }
 
-// -------------------------
-// DERIV LOGIN
-// -------------------------
+// LOGIN
 app.get("/login", (req, res) => {
   const codeVerifier = base64url(crypto.randomBytes(32));
 
   const codeChallenge = base64url(
-    crypto
-      .createHash("sha256")
-      .update(codeVerifier)
-      .digest()
+    crypto.createHash("sha256").update(codeVerifier).digest()
   );
 
   const state = base64url(crypto.randomBytes(32));
 
-  sessions.set(state, {
-    codeVerifier
-  });
+  sessions.set(state, { codeVerifier });
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -58,43 +49,33 @@ app.get("/login", (req, res) => {
   );
 });
 
-// -------------------------
-// OAUTH CALLBACK
-// -------------------------
+// CALLBACK
 app.get("/callback", async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.status(400).send(
-      "Deriv login was cancelled."
-    );
+    return res.status(400).send("Deriv login was cancelled.");
   }
 
   if (!code || !state) {
-    return res.status(400).send(
-      "Missing OAuth code or state."
-    );
+    return res.status(400).send("Missing OAuth code or state.");
   }
 
   const session = sessions.get(state);
 
   if (!session) {
-    return res.status(400).send(
-      "Invalid or expired OAuth state."
-    );
+    return res.status(400).send("Invalid or expired OAuth state.");
   }
 
   sessions.delete(state);
 
   try {
-    // Exchange authorization code for access token
     const tokenResponse = await fetch(
       "https://auth.deriv.com/oauth2/token",
       {
         method: "POST",
         headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded"
+          "Content-Type": "application/x-www-form-urlencoded"
         },
         body: new URLSearchParams({
           grant_type: "authorization_code",
@@ -109,11 +90,7 @@ app.get("/callback", async (req, res) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenResponse.ok) {
-      console.error("Token error:", tokenData);
-
-      return res.status(tokenResponse.status).json(
-        tokenData
-      );
+      return res.status(tokenResponse.status).json(tokenData);
     }
 
     const accessToken = tokenData.access_token;
@@ -124,10 +101,8 @@ app.get("/callback", async (req, res) => {
       );
     }
 
-    // Keep token ONLY on the server
     derivSession.accessToken = accessToken;
 
-    // Get the user's Deriv Options accounts
     const accountsResponse = await fetch(
       "https://api.derivws.com/trading/v1/options/accounts",
       {
@@ -143,14 +118,7 @@ app.get("/callback", async (req, res) => {
     const accountsData = await accountsResponse.json();
 
     if (!accountsResponse.ok) {
-      console.error(
-        "Accounts error:",
-        accountsData
-      );
-
-      return res.status(
-        accountsResponse.status
-      ).json(accountsData);
+      return res.status(accountsResponse.status).json(accountsData);
     }
 
     derivSession.accounts =
@@ -167,18 +135,14 @@ app.get("/callback", async (req, res) => {
       <!DOCTYPE html>
       <html>
       <head>
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Smart Recovery Bot</title>
       </head>
 
       <body>
         <h2>Deriv Connected Successfully</h2>
 
-        <p>
-          Your Deriv account has been connected to
-          Smart Recovery Bot.
-        </p>
+        <p>Your Deriv account is connected.</p>
 
         <p>
           Accounts found:
@@ -190,10 +154,8 @@ app.get("/callback", async (req, res) => {
           <b>CONNECTED</b>
         </p>
 
-        <hr>
-
         <p>
-          Next stage: balance and trading connection.
+          You can return to the Smart Recovery Bot dashboard.
         </p>
       </body>
       </html>
@@ -201,37 +163,72 @@ app.get("/callback", async (req, res) => {
 
   } catch (error) {
     console.error(error);
-
-    res.status(500).send(
-      "OAuth connection failed."
-    );
+    res.status(500).send("OAuth connection failed.");
   }
 });
 
-// -------------------------
-// CONNECTION STATUS
-// -------------------------
+// STATUS
 app.get("/api/status", (req, res) => {
   res.json({
-    connected: Boolean(
-      derivSession.accessToken
-    ),
+    connected: Boolean(derivSession.accessToken),
     accounts: derivSession.accounts.length
   });
 });
 
-// -------------------------
-// HOME
-// -------------------------
-app.get("/", (req, res) => {
-  res.send(
-    "Smart Recovery Bot backend is running."
-  );
+// BALANCE
+app.get("/api/balance", async (req, res) => {
+  if (!derivSession.accessToken) {
+    return res.status(401).json({
+      error: "Deriv account is not connected."
+    });
+  }
+
+  try {
+    const response = await fetch(
+      "https://api.derivws.com/trading/v1/options/accounts",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${derivSession.accessToken}`,
+          "Deriv-App-ID": CLIENT_ID,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    const accounts =
+      data.data ||
+      data.accounts ||
+      [];
+
+    derivSession.accounts = accounts;
+
+    res.json({
+      connected: true,
+      accounts
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: "Unable to retrieve Deriv account data."
+    });
+  }
 });
 
-// -------------------------
+// HOME
+app.get("/", (req, res) => {
+  res.send("Smart Recovery Bot backend is running.");
+});
+
 // START SERVER
-// -------------------------
 app.listen(PORT, () => {
   console.log(
     "Smart Recovery Bot running on port " + PORT
