@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const CLIENT_ID = "34hHdgalUQxRYo0jE6Qp";
+const CLIENT_ID = "34hOtWPGhXtUBtGqORxGB";
 const REDIRECT_URI = "https://smart-recovery-bot.onrender.com/callback";
 
 const sessions = new Map();
