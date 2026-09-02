@@ -9,6 +9,13 @@ const REDIRECT_URI = "https://smart-recovery-bot.onrender.com/callback";
 
 const sessions = new Map();
 
+// Temporary server-side storage.
+// We NEVER send the access token to the browser.
+let derivSession = {
+  accessToken: null,
+  accounts: []
+};
+
 function base64url(buffer) {
   return buffer
     .toString("base64")
@@ -17,14 +24,24 @@ function base64url(buffer) {
     .replace(/=/g, "");
 }
 
+// -------------------------
+// DERIV LOGIN
+// -------------------------
 app.get("/login", (req, res) => {
   const codeVerifier = base64url(crypto.randomBytes(32));
+
   const codeChallenge = base64url(
-    crypto.createHash("sha256").update(codeVerifier).digest()
+    crypto
+      .createHash("sha256")
+      .update(codeVerifier)
+      .digest()
   );
+
   const state = base64url(crypto.randomBytes(32));
 
-  sessions.set(state, { codeVerifier });
+  sessions.set(state, {
+    codeVerifier
+  });
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -36,35 +53,48 @@ app.get("/login", (req, res) => {
     code_challenge_method: "S256"
   });
 
-  res.redirect("https://auth.deriv.com/oauth2/auth?" + params.toString());
+  res.redirect(
+    "https://auth.deriv.com/oauth2/auth?" + params.toString()
+  );
 });
 
+// -------------------------
+// OAUTH CALLBACK
+// -------------------------
 app.get("/callback", async (req, res) => {
   const { code, state, error } = req.query;
 
   if (error) {
-    return res.status(400).send("Deriv login was cancelled.");
+    return res.status(400).send(
+      "Deriv login was cancelled."
+    );
   }
 
   if (!code || !state) {
-    return res.status(400).send("Missing OAuth code or state.");
+    return res.status(400).send(
+      "Missing OAuth code or state."
+    );
   }
 
   const session = sessions.get(state);
 
   if (!session) {
-    return res.status(400).send("Invalid or expired OAuth state.");
+    return res.status(400).send(
+      "Invalid or expired OAuth state."
+    );
   }
 
   sessions.delete(state);
 
   try {
-    const response = await fetch(
+    // Exchange authorization code for access token
+    const tokenResponse = await fetch(
       "https://auth.deriv.com/oauth2/token",
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
+          "Content-Type":
+            "application/x-www-form-urlencoded"
         },
         body: new URLSearchParams({
           grant_type: "authorization_code",
@@ -76,26 +106,134 @@ app.get("/callback", async (req, res) => {
       }
     );
 
-    const data = await response.json();
+    const tokenData = await tokenResponse.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json(data);
+    if (!tokenResponse.ok) {
+      console.error("Token error:", tokenData);
+
+      return res.status(tokenResponse.status).json(
+        tokenData
+      );
     }
 
+    const accessToken = tokenData.access_token;
+
+    if (!accessToken) {
+      return res.status(500).send(
+        "Deriv did not return an access token."
+      );
+    }
+
+    // Keep token ONLY on the server
+    derivSession.accessToken = accessToken;
+
+    // Get the user's Deriv Options accounts
+    const accountsResponse = await fetch(
+      "https://api.derivws.com/trading/v1/options/accounts",
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Deriv-App-ID": CLIENT_ID,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const accountsData = await accountsResponse.json();
+
+    if (!accountsResponse.ok) {
+      console.error(
+        "Accounts error:",
+        accountsData
+      );
+
+      return res.status(
+        accountsResponse.status
+      ).json(accountsData);
+    }
+
+    derivSession.accounts =
+      accountsData.data ||
+      accountsData.accounts ||
+      [];
+
+    console.log(
+      "Deriv connected. Accounts:",
+      derivSession.accounts.length
+    );
+
     res.send(`
-      <h2>Deriv Connected Successfully</h2>
-      <p>Authorization completed successfully.</p>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0">
+        <title>Smart Recovery Bot</title>
+      </head>
+
+      <body>
+        <h2>Deriv Connected Successfully</h2>
+
+        <p>
+          Your Deriv account has been connected to
+          Smart Recovery Bot.
+        </p>
+
+        <p>
+          Accounts found:
+          <b>${derivSession.accounts.length}</b>
+        </p>
+
+        <p>
+          Connection status:
+          <b>CONNECTED</b>
+        </p>
+
+        <hr>
+
+        <p>
+          Next stage: balance and trading connection.
+        </p>
+      </body>
+      </html>
     `);
+
   } catch (error) {
     console.error(error);
-    res.status(500).send("OAuth connection failed.");
+
+    res.status(500).send(
+      "OAuth connection failed."
+    );
   }
 });
 
-app.get("/", (req, res) => {
-  res.send("Smart Recovery Bot backend is running.");
+// -------------------------
+// CONNECTION STATUS
+// -------------------------
+app.get("/api/status", (req, res) => {
+  res.json({
+    connected: Boolean(
+      derivSession.accessToken
+    ),
+    accounts: derivSession.accounts.length
+  });
 });
 
+// -------------------------
+// HOME
+// -------------------------
+app.get("/", (req, res) => {
+  res.send(
+    "Smart Recovery Bot backend is running."
+  );
+});
+
+// -------------------------
+// START SERVER
+// -------------------------
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log(
+    "Smart Recovery Bot running on port " + PORT
+  );
 });
