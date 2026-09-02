@@ -2,13 +2,10 @@ const express = require("express");
 const crypto = require("crypto");
 
 const app = express();
-app.use(express.json());
-
 const PORT = process.env.PORT || 3000;
 
 const CLIENT_ID = "34hHdgalUQxRYo0jE6Qp";
-const REDIRECT_URI =
-  "https://belloayomide819-afk.github.io/Smart-recovery-bot/";
+const REDIRECT_URI = "https://smart-recovery-bot.onrender.com/callback";
 
 const sessions = new Map();
 
@@ -22,17 +19,12 @@ function base64url(buffer) {
 
 app.get("/login", (req, res) => {
   const codeVerifier = base64url(crypto.randomBytes(32));
-
   const codeChallenge = base64url(
     crypto.createHash("sha256").update(codeVerifier).digest()
   );
-
   const state = base64url(crypto.randomBytes(32));
 
-  sessions.set(state, {
-    codeVerifier,
-    created: Date.now()
-  });
+  sessions.set(state, { codeVerifier });
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -44,9 +36,7 @@ app.get("/login", (req, res) => {
     code_challenge_method: "S256"
   });
 
-  res.redirect(
-    "https://auth.deriv.com/oauth2/auth?" + params.toString()
-  );
+  res.redirect("https://auth.deriv.com/oauth2/auth?" + params.toString());
 });
 
 app.get("/callback", async (req, res) => {
@@ -89,19 +79,15 @@ app.get("/callback", async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      return res
-        .status(response.status)
-        .json(data);
+      return res.status(response.status).json(data);
     }
 
     res.send(`
       <h2>Deriv Connected Successfully</h2>
-      <p>Your Deriv authorization was received.</p>
-      <p>You can now return to the Smart Recovery Bot.</p>
+      <p>Authorization completed successfully.</p>
     `);
-
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
     res.status(500).send("OAuth connection failed.");
   }
 });
