@@ -1,12 +1,9 @@
 const express = require("express");
 const crypto = require("crypto");
+const WebSocket = require("ws");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ===============================
-// CORS
-// ===============================
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -28,18 +25,10 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ===============================
-// DERIV SETTINGS
-// ===============================
-
 const CLIENT_ID = "34hOtWPGhXtUBtGqORxGB";
 
 const REDIRECT_URI =
   "https://smart-recovery-bot.onrender.com/callback";
-
-// ===============================
-// SESSION STORAGE
-// ===============================
 
 const sessions = new Map();
 
@@ -48,9 +37,7 @@ let derivSession = {
   accounts: []
 };
 
-// ===============================
-// HELPER
-// ===============================
+const tradingConnections = new Map();
 
 function base64url(buffer) {
   return buffer
@@ -101,7 +88,7 @@ app.get("/login", (req, res) => {
 });
 
 // ===============================
-// OAUTH CALLBACK
+// CALLBACK
 // ===============================
 
 app.get("/callback", async (req, res) => {
@@ -134,34 +121,20 @@ app.get("/callback", async (req, res) => {
   sessions.delete(state);
 
   try {
-    // ===============================
-    // EXCHANGE CODE FOR TOKEN
-    // ===============================
-
     const tokenResponse = await fetch(
       "https://auth.deriv.com/oauth2/token",
       {
         method: "POST",
-
         headers: {
           "Content-Type":
             "application/x-www-form-urlencoded"
         },
-
         body: new URLSearchParams({
-          grant_type:
-            "authorization_code",
-
-          client_id:
-            CLIENT_ID,
-
+          grant_type: "authorization_code",
+          client_id: CLIENT_ID,
           code,
-
-          code_verifier:
-            session.codeVerifier,
-
-          redirect_uri:
-            REDIRECT_URI
+          code_verifier: session.codeVerifier,
+          redirect_uri: REDIRECT_URI
         })
       }
     );
@@ -187,23 +160,16 @@ app.get("/callback", async (req, res) => {
     derivSession.accessToken =
       accessToken;
 
-    // ===============================
-    // GET DERIV ACCOUNTS
-    // ===============================
-
     const accountsResponse =
       await fetch(
         "https://api.derivws.com/trading/v1/options/accounts",
         {
           method: "GET",
-
           headers: {
             Authorization:
               `Bearer ${accessToken}`,
-
             "Deriv-App-ID":
               CLIENT_ID,
-
             "Content-Type":
               "application/json"
           }
@@ -224,80 +190,45 @@ app.get("/callback", async (req, res) => {
       accountsData.accounts ||
       [];
 
-    console.log(
-      "Deriv connected. Accounts:",
-      derivSession.accounts.length
-    );
-
     res.send(`
       <!DOCTYPE html>
-
       <html>
       <head>
-
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        >
-
-        <title>
-          Smart Recovery Bot
-        </title>
-
+        <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+        <title>Smart Recovery Bot</title>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: Arial;
             padding: 30px;
             text-align: center;
           }
-
           .success {
             color: green;
             font-weight: bold;
           }
         </style>
-
       </head>
-
       <body>
-
-        <h2>
-          Deriv Connected Successfully
-        </h2>
-
-        <p>
-          Your Deriv account is connected.
-        </p>
-
+        <h2>Deriv Connected Successfully</h2>
+        <p>Your Deriv account is connected.</p>
         <p>
           Accounts found:
-          <b>
-            ${derivSession.accounts.length}
-          </b>
+          <b>${derivSession.accounts.length}</b>
         </p>
-
         <p>
           Connection status:
-          <span class="success">
-            CONNECTED
-          </span>
+          <span class="success">CONNECTED</span>
         </p>
-
         <p>
-          You can return to the
-          Smart Recovery Bot dashboard.
+          You can return to the Smart Recovery Bot dashboard.
         </p>
-
       </body>
       </html>
     `);
 
   } catch (error) {
-
-    console.error(
-      "OAuth error:",
-      error
-    );
+    console.error("OAuth error:", error);
 
     res.status(500).send(
       "OAuth connection failed."
@@ -310,17 +241,13 @@ app.get("/callback", async (req, res) => {
 // ===============================
 
 app.get("/api/status", (req, res) => {
-
   res.json({
     connected:
-      Boolean(
-        derivSession.accessToken
-      ),
+      Boolean(derivSession.accessToken),
 
     accounts:
       derivSession.accounts.length
   });
-
 });
 
 // ===============================
@@ -328,31 +255,24 @@ app.get("/api/status", (req, res) => {
 // ===============================
 
 app.get("/api/balance", async (req, res) => {
-
   if (!derivSession.accessToken) {
-
     return res.status(401).json({
       error:
         "Deriv account is not connected."
     });
-
   }
 
   try {
-
     const response =
       await fetch(
         "https://api.derivws.com/trading/v1/options/accounts",
         {
           method: "GET",
-
           headers: {
             Authorization:
               `Bearer ${derivSession.accessToken}`,
-
             "Deriv-App-ID":
               CLIENT_ID,
-
             "Content-Type":
               "application/json"
           }
@@ -363,11 +283,9 @@ app.get("/api/balance", async (req, res) => {
       await response.json();
 
     if (!response.ok) {
-
       return res
         .status(response.status)
         .json(data);
-
     }
 
     const accounts =
@@ -379,34 +297,25 @@ app.get("/api/balance", async (req, res) => {
       accounts;
 
     res.json({
-
       connected: true,
-
       accounts
-
     });
 
   } catch (error) {
-
     console.error(
       "Balance error:",
       error
     );
 
     res.status(500).json({
-
       error:
         "Unable to retrieve Deriv account data."
-
     });
-
   }
-
 });
 
 // ===============================
-// CREATE AUTHENTICATED
-// TRADING WEBSOCKET CONNECTION
+// CONNECT TRADING WEBSOCKET
 // ===============================
 
 app.post(
@@ -414,73 +323,60 @@ app.post(
   async (req, res) => {
 
     if (!derivSession.accessToken) {
-
       return res.status(401).json({
-
         error:
           "Deriv account is not connected."
-
       });
-
     }
 
     const accountId =
       req.body?.account_id;
 
     if (!accountId) {
-
       return res.status(400).json({
-
         error:
           "Account ID is required."
-
       });
-
     }
-
-    // Make sure account belongs
-    // to the connected Deriv login.
 
     const account =
       derivSession.accounts.find(
-        (item) =>
+        item =>
           item.account_id === accountId
       );
 
     if (!account) {
-
       return res.status(403).json({
-
         error:
-          "This account is not available in the connected Deriv session."
-
+          "This account is not available."
       });
+    }
 
+    // Close old connection
+    const old =
+      tradingConnections.get(accountId);
+
+    if (old?.ws) {
+      try {
+        old.ws.close();
+      } catch {}
     }
 
     try {
 
-      // ===============================
-      // REQUEST ONE-TIME PASSWORD
-      // ===============================
-
+      // Get one-time WebSocket URL
       const response =
         await fetch(
           `https://api.derivws.com/trading/v1/options/accounts/${accountId}/otp`,
           {
             method: "POST",
-
             headers: {
-
               Authorization:
                 `Bearer ${derivSession.accessToken}`,
-
               "Deriv-App-ID":
                 CLIENT_ID,
-
               "Content-Type":
                 "application/json"
-
             }
           }
         );
@@ -489,52 +385,195 @@ app.post(
         await response.json();
 
       if (!response.ok) {
-
         return res
           .status(response.status)
           .json(data);
-
       }
 
       const websocketUrl =
         data.data?.url;
 
       if (!websocketUrl) {
-
         return res.status(500).json({
-
           error:
             "Deriv did not return a WebSocket URL."
-
         });
-
       }
 
-      // ===============================
-      // IMPORTANT
-      // ===============================
-      // The WebSocket URL contains a
-      // short-lived OTP.
-      //
-      // We DO NOT send the URL back
-      // to the browser yet.
-      //
-      // We only confirm that Deriv
-      // successfully created it.
-      // ===============================
+      console.log(
+        "Opening trading WebSocket for:",
+        accountId,
+        account.account_type
+      );
+
+      const ws =
+        new WebSocket(websocketUrl);
+
+      const connection = {
+        ws,
+        accountId,
+        accountType:
+          account.account_type,
+        connected: false,
+        latestTick: null,
+        latestDigit: null,
+        balance: null,
+        activeSymbols: [],
+        error: null
+      };
+
+      tradingConnections.set(
+        accountId,
+        connection
+      );
+
+      ws.on("open", () => {
+
+        console.log(
+          "TRADING WEBSOCKET CONNECTED:",
+          accountId
+        );
+
+        connection.connected = true;
+
+        // Account balance
+        ws.send(
+          JSON.stringify({
+            balance: 1,
+            subscribe: 1,
+            req_id: 1
+          })
+        );
+
+        // Get active symbols
+        ws.send(
+          JSON.stringify({
+            active_symbols: "brief",
+            req_id: 2
+          })
+        );
+
+        // R_25 tick stream
+        ws.send(
+          JSON.stringify({
+            ticks: "R_25",
+            subscribe: 1,
+            req_id: 3
+          })
+        );
+      });
+
+      ws.on("message", raw => {
+
+        try {
+
+          const message =
+            JSON.parse(
+              raw.toString()
+            );
+
+          console.log(
+            "DERIV:",
+            JSON.stringify(message)
+          );
+
+          if (
+            message.msg_type ===
+            "balance"
+          ) {
+            connection.balance =
+              message.balance;
+          }
+
+          if (
+            message.msg_type ===
+            "active_symbols"
+          ) {
+            connection.activeSymbols =
+              message.active_symbols || [];
+          }
+
+          if (
+            message.msg_type ===
+            "tick"
+          ) {
+
+            const quote =
+              Number(
+                message.tick.quote
+              );
+
+            connection.latestTick =
+              quote;
+
+            const text =
+              quote.toFixed(
+                getDecimalPlaces(quote)
+              );
+
+            connection.latestDigit =
+              Number(
+                text[text.length - 1]
+              );
+          }
+
+          if (message.error) {
+            connection.error =
+              message.error.message ||
+              "Deriv WebSocket error";
+          }
+
+        } catch (error) {
+          console.error(
+            "WebSocket message error:",
+            error
+          );
+        }
+      });
+
+      ws.on("error", error => {
+
+        console.error(
+          "Trading WebSocket error:",
+          error
+        );
+
+        connection.error =
+          error.message ||
+          "WebSocket error";
+      });
+
+      ws.on("close", () => {
+
+        console.log(
+          "Trading WebSocket closed:",
+          accountId
+        );
+
+        connection.connected = false;
+      });
+
+      // Wait briefly for connection
+      await new Promise(resolve =>
+        setTimeout(resolve, 1500)
+      );
+
+      if (!connection.connected) {
+
+        return res.status(502).json({
+          connected: false,
+          error:
+            connection.error ||
+            "Trading WebSocket did not connect."
+        });
+      }
 
       res.json({
-
         connected: true,
-
-        account_id:
-          accountId,
-
+        account_id: accountId,
         account_type:
           account.account_type,
-
         websocket_ready: true
-
       });
 
     } catch (error) {
@@ -545,27 +584,90 @@ app.post(
       );
 
       res.status(500).json({
-
         error:
           "Unable to create trading connection."
-
       });
-
     }
-
   }
 );
+
+// ===============================
+// GET LIVE TICK
+// ===============================
+
+app.get("/api/tick", (req, res) => {
+
+  const accountId =
+    req.query.account_id;
+
+  if (!accountId) {
+    return res.status(400).json({
+      error:
+        "Account ID is required."
+    });
+  }
+
+  const connection =
+    tradingConnections.get(
+      accountId
+    );
+
+  if (!connection) {
+    return res.status(404).json({
+      connected: false,
+      error:
+        "Trading connection not found."
+    });
+  }
+
+  res.json({
+    connected:
+      connection.connected,
+
+    account_id:
+      connection.accountId,
+
+    account_type:
+      connection.accountType,
+
+    balance:
+      connection.balance,
+
+    latest_tick:
+      connection.latestTick,
+
+    last_digit:
+      connection.latestDigit,
+
+    error:
+      connection.error
+  });
+});
+
+// ===============================
+// HELPER
+// ===============================
+
+function getDecimalPlaces(number) {
+
+  const text =
+    String(number);
+
+  if (!text.includes(".")) {
+    return 0;
+  }
+
+  return text.split(".")[1].length;
+}
 
 // ===============================
 // HOME
 // ===============================
 
 app.get("/", (req, res) => {
-
   res.send(
     "Smart Recovery Bot backend is running."
   );
-
 });
 
 // ===============================
@@ -578,5 +680,4 @@ app.listen(PORT, () => {
     "Smart Recovery Bot running on port " +
     PORT
   );
-
 });
