@@ -139,7 +139,7 @@ label{
   background:#020617;
   border-radius:9px;
   padding:10px;
-  height:170px;
+  height:220px;
   overflow:auto;
   font-size:13px;
   color:#cbd5e1;
@@ -158,7 +158,7 @@ Deriv Digit Trading Dashboard
 </div>
 
 <div class="badge">
-DEMO TEST MODE
+DEMO TEST MODE — REAL TRADING LOCKED
 </div>
 
 
@@ -430,9 +430,7 @@ let processedContractId = null;
 ========================= */
 
 function $(id){
-
 return document.getElementById(id);
-
 }
 
 
@@ -619,9 +617,7 @@ option
 });
 
 
-/*
-  ALWAYS SELECT DEMO
-*/
+/* ALWAYS SELECT DEMO */
 
 const demo =
 accounts.find(
@@ -736,6 +732,9 @@ return;
 $("connectTrading").disabled =
 false;
 
+$("tradingStatus").textContent =
+"Trading: NOT READY";
+
 updateBalance(
 selectedAccount
 );
@@ -834,10 +833,8 @@ headers:{
 },
 
 body:JSON.stringify({
-
 account_id:
 selectedAccount.account_id
-
 })
 
 }
@@ -893,9 +890,7 @@ function openTradingWebSocket(url){
 if(ws){
 
 try{
-
 ws.close();
-
 }catch(e){}
 
 }
@@ -923,7 +918,11 @@ $("startBot").disabled =
 false;
 
 log(
-"Trading WebSocket READY."
+"Demo trading connection is READY."
+);
+
+log(
+"Actual digit trade execution is now enabled."
 );
 
 subscribeTicks();
@@ -946,6 +945,10 @@ event.data
 );
 
 }catch(error){
+
+log(
+"Invalid Deriv message received."
+);
 
 return;
 
@@ -1032,11 +1035,24 @@ return false;
 }
 
 
+try{
+
 ws.send(
 JSON.stringify(data)
 );
 
 return true;
+
+}catch(error){
+
+log(
+"Send error: " +
+error.message
+);
+
+return false;
+
+}
 
 }
 
@@ -1312,7 +1328,7 @@ return;
 }
 
 
-currentStake =
+const initialStake =
 Number(
 $("stake").value
 );
@@ -1320,9 +1336,9 @@ $("stake").value
 
 if(
 !Number.isFinite(
-currentStake
+initialStake
 ) ||
-currentStake <= 0
+initialStake <= 0
 ){
 
 alert(
@@ -1333,6 +1349,11 @@ return;
 
 }
 
+
+currentStake =
+Number(
+initialStake.toFixed(2)
+);
 
 sessionPL =
 0;
@@ -1352,6 +1373,9 @@ false;
 botRunning =
 true;
 
+currentContractId =
+null;
+
 processedContractId =
 null;
 
@@ -1364,12 +1388,35 @@ $("botStatus").innerHTML =
 
 
 log(
+"================================"
+);
+
+log(
 "BOT STARTED — DEMO ONLY."
 );
 
 log(
-"Stake: $" +
+"Initial Stake: $" +
 currentStake.toFixed(2)
+);
+
+log(
+"Take Profit: $" +
+Number($("takeProfit").value).toFixed(2)
+);
+
+log(
+"Stop Loss: $" +
+Number($("stopLoss").value).toFixed(2)
+);
+
+log(
+"Multiplier: " +
+Number($("multiplier").value).toFixed(2)
+);
+
+log(
+"================================"
 );
 
 
@@ -1392,22 +1439,6 @@ return;
 
 
 if(tradeInProgress){
-
-return;
-
-}
-
-
-if(currentDigit === null){
-
-log(
-"Waiting for live digit..."
-);
-
-setTimeout(
-startNextTrade,
-1000
-);
 
 return;
 
@@ -1451,6 +1482,22 @@ return;
 }
 
 
+if(currentDigit === null){
+
+log(
+"Waiting for live digit..."
+);
+
+setTimeout(
+startNextTrade,
+1000
+);
+
+return;
+
+}
+
+
 log(
 "Preparing DIGITDIFF trade..."
 );
@@ -1478,13 +1525,14 @@ currentDigit
 
 
 log(
-"Proposal | Stake $" +
+"Requesting proposal | Stake $" +
 currentStake.toFixed(2) +
 " | Barrier " +
 barrier
 );
 
 
+const sent =
 send({
 
 proposal:
@@ -1518,6 +1566,19 @@ barrier
 
 });
 
+
+if(!sent){
+
+tradeInProgress =
+false;
+
+setTimeout(
+startNextTrade,
+1000
+);
+
+}
+
 }
 
 
@@ -1535,6 +1596,15 @@ if(!proposal){
 
 tradeInProgress =
 false;
+
+log(
+"Proposal response was empty."
+);
+
+setTimeout(
+startNextTrade,
+1000
+);
 
 return;
 
@@ -1560,6 +1630,11 @@ log(
 "Proposal ID missing."
 );
 
+setTimeout(
+startNextTrade,
+1000
+);
+
 return;
 
 }
@@ -1578,21 +1653,31 @@ log(
 "Invalid proposal price."
 );
 
+setTimeout(
+startNextTrade,
+1000
+);
+
 return;
 
 }
 
 
 log(
-"Proposal received."
+"PROPOSAL RECEIVED."
 );
 
+log(
+"Proposal ID: " +
+proposalId
+);
 
 log(
 "Buying DEMO contract..."
 );
 
 
+const sent =
 send({
 
 buy:
@@ -1602,6 +1687,19 @@ price:
 askPrice
 
 });
+
+
+if(!sent){
+
+tradeInProgress =
+false;
+
+setTimeout(
+startNextTrade,
+1000
+);
+
+}
 
 }
 
@@ -1621,6 +1719,35 @@ if(!buy){
 tradeInProgress =
 false;
 
+log(
+"BUY response was empty."
+);
+
+setTimeout(
+startNextTrade,
+1000
+);
+
+return;
+
+}
+
+
+if(buy.error){
+
+tradeInProgress =
+false;
+
+log(
+"BUY ERROR: " +
+buy.error
+);
+
+setTimeout(
+startNextTrade,
+1000
+);
+
 return;
 
 }
@@ -1638,12 +1765,12 @@ log(
 currentContractId
 );
 
-
 log(
-"Waiting for result..."
+"Waiting for WIN/LOSS result..."
 );
 
 
+const sent =
 send({
 
 proposal_open_contract:
@@ -1656,6 +1783,15 @@ subscribe:
 1
 
 });
+
+
+if(!sent){
+
+log(
+"Could not subscribe to contract result."
+);
+
+}
 
 }
 
@@ -1768,11 +1904,18 @@ profit.toFixed(2)
 );
 
 
+/* RESET AFTER WIN */
+
 currentStake =
 Number(
 $("stake").value
 );
 
+
+log(
+"Stake reset to $" +
+currentStake.toFixed(2)
+);
 
 }else{
 
@@ -1835,6 +1978,12 @@ balance.toFixed(2);
 }
 
 }
+
+
+log(
+"Session P/L: $" +
+sessionPL.toFixed(2)
+);
 
 
 const tp =
