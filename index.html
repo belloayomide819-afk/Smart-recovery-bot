@@ -4,6 +4,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Recovery Bot</title>
 </head>
+
 <body>
   <h1>Smart Recovery Bot</h1>
   <p>Deriv Trading Bot</p>
@@ -21,16 +22,19 @@
   <input id="multiplier" type="number" value="1.0" step="0.1"><br><br>
 
   <button onclick="connectDeriv()">CONNECT DERIV</button>
-<button>START BOT</button>
-<button>STOP BOT</button>
+  <button>START BOT</button>
+  <button>STOP BOT</button>
 
-  <p>Status: <b>Disconnected</b></p>
-  <p>Balance: $0.00</p>
-  <p>Profit/Loss: $0.00</p>
+  <p>Status: <b id="status">Disconnected</b></p>
+  <p>Balance: <span id="balance">$0.00</span></p>
+  <p>Profit/Loss: <span id="profit">$0.00</span></p>
+
+  <script>
+    const BACKEND_URL = "https://smart-recovery-bot.onrender.com";
+
+    function connectDeriv() {
+      window.location.href = BACKEND_URL + "/login";
+    }
+  </script>
 </body>
 </html>
-<script>
-function connectDeriv() {
-  window.location.href = "https://oauth.deriv.com/oauth2/authorize?app_id=34hHdgalUQxRYo0jE6Qp";
-}
-</script>
