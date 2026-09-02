@@ -47,9 +47,15 @@ function base64url(buffer) {
     .replace(/=/g, "");
 }
 
-// ===============================
-// LOGIN
-// ===============================
+function getDecimalPlaces(value) {
+  const text = String(value);
+
+  if (!text.includes(".")) {
+    return 0;
+  }
+
+  return text.split(".")[1].length;
+}
 
 app.get("/login", (req, res) => {
   const codeVerifier = base64url(
@@ -86,10 +92,6 @@ app.get("/login", (req, res) => {
       params.toString()
   );
 });
-
-// ===============================
-// CALLBACK
-// ===============================
 
 app.get("/callback", async (req, res) => {
   const {
@@ -203,23 +205,29 @@ app.get("/callback", async (req, res) => {
             padding: 30px;
             text-align: center;
           }
+
           .success {
             color: green;
             font-weight: bold;
           }
         </style>
       </head>
+
       <body>
         <h2>Deriv Connected Successfully</h2>
+
         <p>Your Deriv account is connected.</p>
+
         <p>
           Accounts found:
           <b>${derivSession.accounts.length}</b>
         </p>
+
         <p>
           Connection status:
           <span class="success">CONNECTED</span>
         </p>
+
         <p>
           You can return to the Smart Recovery Bot dashboard.
         </p>
@@ -236,10 +244,6 @@ app.get("/callback", async (req, res) => {
   }
 });
 
-// ===============================
-// STATUS
-// ===============================
-
 app.get("/api/status", (req, res) => {
   res.json({
     connected:
@@ -249,10 +253,6 @@ app.get("/api/status", (req, res) => {
       derivSession.accounts.length
   });
 });
-
-// ===============================
-// BALANCE / ACCOUNTS
-// ===============================
 
 app.get("/api/balance", async (req, res) => {
   if (!derivSession.accessToken) {
@@ -314,10 +314,6 @@ app.get("/api/balance", async (req, res) => {
   }
 });
 
-// ===============================
-// CONNECT TRADING WEBSOCKET
-// ===============================
-
 app.post(
   "/api/connect-trading",
   async (req, res) => {
@@ -352,7 +348,6 @@ app.post(
       });
     }
 
-    // Close old connection
     const old =
       tradingConnections.get(accountId);
 
@@ -363,8 +358,6 @@ app.post(
     }
 
     try {
-
-      // Get one-time WebSocket URL
       const response =
         await fetch(
           `https://api.derivws.com/trading/v1/options/accounts/${accountId}/otp`,
@@ -436,7 +429,6 @@ app.post(
 
         connection.connected = true;
 
-        // Account balance
         ws.send(
           JSON.stringify({
             balance: 1,
@@ -445,7 +437,6 @@ app.post(
           })
         );
 
-        // Get active symbols
         ws.send(
           JSON.stringify({
             active_symbols: "brief",
@@ -453,7 +444,6 @@ app.post(
           })
         );
 
-        // R_25 tick stream
         ws.send(
           JSON.stringify({
             ticks: "R_25",
@@ -466,7 +456,6 @@ app.post(
       ws.on("message", raw => {
 
         try {
-
           const message =
             JSON.parse(
               raw.toString()
@@ -481,8 +470,33 @@ app.post(
             message.msg_type ===
             "balance"
           ) {
-            connection.balance =
+
+            const balanceData =
               message.balance;
+
+            if (
+              balanceData &&
+              typeof balanceData.balance ===
+                "number"
+            ) {
+              connection.balance =
+                balanceData.balance;
+            } else if (
+              balanceData &&
+              typeof balanceData.balance ===
+                "string"
+            ) {
+              connection.balance =
+                Number(
+                  balanceData.balance
+                );
+            } else if (
+              typeof balanceData ===
+                "number"
+            ) {
+              connection.balance =
+                balanceData;
+            }
           }
 
           if (
@@ -503,18 +517,39 @@ app.post(
                 message.tick.quote
               );
 
-            connection.latestTick =
-              quote;
+            if (
+              Number.isFinite(quote)
+            ) {
 
-            const text =
-              quote.toFixed(
-                getDecimalPlaces(quote)
-              );
+              connection.latestTick =
+                quote;
 
-            connection.latestDigit =
-              Number(
-                text[text.length - 1]
-              );
+              const decimalPlaces =
+                message.tick.pip_size != null
+                  ? Math.max(
+                      0,
+                      Math.round(
+                        -Math.log10(
+                          Number(
+                            message.tick.pip_size
+                          )
+                        )
+                      )
+                    )
+                  : getDecimalPlaces(
+                      message.tick.quote
+                    );
+
+              const text =
+                quote.toFixed(
+                  decimalPlaces
+                );
+
+              connection.latestDigit =
+                Number(
+                  text[text.length - 1]
+                );
+            }
           }
 
           if (message.error) {
@@ -553,7 +588,6 @@ app.post(
         connection.connected = false;
       });
 
-      // Wait briefly for connection
       await new Promise(resolve =>
         setTimeout(resolve, 1500)
       );
@@ -590,10 +624,6 @@ app.post(
     }
   }
 );
-
-// ===============================
-// GET LIVE TICK
-// ===============================
 
 app.get("/api/tick", (req, res) => {
 
@@ -644,35 +674,11 @@ app.get("/api/tick", (req, res) => {
   });
 });
 
-// ===============================
-// HELPER
-// ===============================
-
-function getDecimalPlaces(number) {
-
-  const text =
-    String(number);
-
-  if (!text.includes(".")) {
-    return 0;
-  }
-
-  return text.split(".")[1].length;
-}
-
-// ===============================
-// HOME
-// ===============================
-
 app.get("/", (req, res) => {
   res.send(
     "Smart Recovery Bot backend is running."
   );
 });
-
-// ===============================
-// START SERVER
-// ===============================
 
 app.listen(PORT, () => {
 
