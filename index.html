@@ -139,7 +139,7 @@ label{
   background:#020617;
   border-radius:9px;
   padding:10px;
-  height:240px;
+  height:260px;
   overflow:auto;
   font-size:13px;
   color:#cbd5e1;
@@ -270,13 +270,13 @@ Initial Stake (USD)
 <input
 id="stake"
 type="number"
-value="0.10"
-min="0.01"
+value="0.35"
+min="0.35"
 step="0.01">
 </label>
 
 <label>
-Take Profit (USD)
+Profit Target (USD)
 <input
 id="takeProfit"
 type="number"
@@ -286,23 +286,33 @@ step="0.01">
 </label>
 
 <label>
-Stop Loss (USD)
+Hard Stop Loss (USD)
 <input
 id="stopLoss"
 type="number"
-value="0.15"
+value="0.70"
 min="0.01"
 step="0.01">
 </label>
 
 <label>
-Martingale Multiplier
+Recovery Multiplier
 <input
 id="multiplier"
 type="number"
-value="1.0"
+value="2.0"
 min="1"
 step="0.1">
+</label>
+
+<label>
+Maximum Recovery Stake (USD)
+<input
+id="maxRecoveryStake"
+type="number"
+value="1.00"
+min="0.35"
+step="0.01">
 </label>
 
 </div>
@@ -362,7 +372,12 @@ Session Stats
 
 <div class="row">
 <span>Current Stake</span>
-<b id="currentStake">$0.10</b>
+<b id="currentStake">$0.35</b>
+</div>
+
+<div class="row">
+<span>Recovery Needed</span>
+<b id="recoveryNeeded">$0.00</b>
 </div>
 
 </div>
@@ -408,7 +423,7 @@ let botRunning = false;
 
 let tradeInProgress = false;
 
-let currentStake = 0.10;
+let currentStake = 0.35;
 
 let sessionPL = 0;
 
@@ -423,6 +438,19 @@ let currentDigit = null;
 let currentContractId = null;
 
 let processedContractId = null;
+
+/*
+  Stores the profit ratio observed from
+  the most recent winning proposal.
+
+  Example:
+  Stake $0.35
+  Profit $0.02
+
+  Profit ratio =
+  0.02 / 0.35
+*/
+let payoutProfitRatio = 0;
 
 
 /* =========================
@@ -478,6 +506,17 @@ losses;
 $("currentStake").textContent =
 "$" +
 currentStake.toFixed(2);
+
+const recovery =
+Math.max(
+0,
+- sessionPL +
+Number($("takeProfit").value || 0)
+);
+
+$("recoveryNeeded").textContent =
+"$" +
+recovery.toFixed(2);
 
 }
 
@@ -1328,15 +1367,73 @@ $("stake").value
 );
 
 
+const tp =
+Number(
+$("takeProfit").value
+);
+
+const sl =
+Number(
+$("stopLoss").value
+);
+
+const maxRecovery =
+Number(
+$("maxRecoveryStake").value
+);
+
+
 if(
 !Number.isFinite(
 initialStake
 ) ||
-initialStake <= 0
+initialStake < 0.35
 ){
 
 alert(
-"Invalid stake."
+"Initial stake must be at least $0.35."
+);
+
+return;
+
+}
+
+
+if(
+!Number.isFinite(tp) ||
+tp <= 0
+){
+
+alert(
+"Invalid profit target."
+);
+
+return;
+
+}
+
+
+if(
+!Number.isFinite(sl) ||
+sl <= 0
+){
+
+alert(
+"Invalid hard stop loss."
+);
+
+return;
+
+}
+
+
+if(
+!Number.isFinite(maxRecovery) ||
+maxRecovery < initialStake
+){
+
+alert(
+"Maximum recovery stake must be at least the initial stake."
 );
 
 return;
@@ -1373,6 +1470,9 @@ null;
 processedContractId =
 null;
 
+payoutProfitRatio =
+0;
+
 
 updateStats();
 
@@ -1395,18 +1495,23 @@ currentStake.toFixed(2)
 );
 
 log(
-"Take Profit: $" +
-Number($("takeProfit").value).toFixed(2)
+"Profit Target: $" +
+tp.toFixed(2)
 );
 
 log(
-"Stop Loss: $" +
-Number($("stopLoss").value).toFixed(2)
+"Hard Stop Loss: $" +
+sl.toFixed(2)
 );
 
 log(
-"Multiplier: " +
+"Recovery Multiplier: " +
 Number($("multiplier").value).toFixed(2)
+);
+
+log(
+"Maximum Recovery Stake: $" +
+maxRecovery.toFixed(2)
 );
 
 log(
@@ -1455,7 +1560,7 @@ sessionPL >= tp
 ){
 
 stopBot(
-"TAKE PROFIT reached."
+"PROFIT TARGET reached."
 );
 
 return;
@@ -1468,10 +1573,141 @@ sessionPL <= -sl
 ){
 
 stopBot(
-"STOP LOSS reached."
+"HARD STOP LOSS reached."
 );
 
 return;
+
+}
+
+
+/*
+  If we have a loss, calculate whether
+  a recovery trade is sensible.
+*/
+
+if(
+sessionPL < 0 &&
+payoutProfitRatio > 0
+){
+
+const desiredProfit =
+tp;
+
+
+const amountNeeded =
+Math.abs(
+sessionPL
+) +
+desiredProfit;
+
+
+/*
+  Required stake =
+  amount needed / expected
+  profit ratio.
+*/
+
+const calculatedRecovery =
+amountNeeded /
+payoutProfitRatio;
+
+
+const multiplier =
+Number(
+$("multiplier").value
+);
+
+
+const multiplierStake =
+currentStake *
+multiplier;
+
+
+const maxRecoveryStake =
+Number(
+$("maxRecoveryStake").value
+);
+
+
+/*
+  We use the larger of:
+  - normal multiplier stake
+  - calculated recovery stake
+
+  BUT never exceed the configured
+  maximum recovery stake.
+*/
+
+const proposedStake =
+Math.max(
+multiplierStake,
+calculatedRecovery
+);
+
+
+if(
+proposedStake >
+maxRecoveryStake
+){
+
+log(
+"RECOVERY BLOCKED."
+);
+
+log(
+"Required recovery stake: $" +
+proposedStake.toFixed(2)
+);
+
+log(
+"Maximum allowed recovery stake: $" +
+maxRecoveryStake.toFixed(2)
+);
+
+log(
+"Bot stopped to protect DEMO balance."
+);
+
+stopBot(
+"Recovery stake exceeded safety limit."
+);
+
+return;
+
+}
+
+
+currentStake =
+Number(
+Math.max(
+0.35,
+proposedStake
+).toFixed(2)
+);
+
+
+log(
+"Recovery calculation."
+);
+
+log(
+"Amount to recover + target profit: $" +
+amountNeeded.toFixed(2)
+);
+
+log(
+"Observed profit ratio: " +
+(
+payoutProfitRatio * 100
+).toFixed(2) +
+"%"
+);
+
+log(
+"Recovery stake selected: $" +
+currentStake.toFixed(2)
+);
 
 }
 
@@ -1613,6 +1849,51 @@ const askPrice =
 Number(
 proposal.ask_price
 );
+
+
+/*
+  Deriv can provide payout.
+  If available, calculate expected
+  profit ratio from the proposal.
+*/
+
+const payout =
+Number(
+proposal.payout
+);
+
+if(
+Number.isFinite(payout) &&
+payout > askPrice &&
+askPrice > 0
+){
+
+const ratio =
+(
+payout -
+askPrice
+) /
+askPrice;
+
+if(
+Number.isFinite(ratio) &&
+ratio > 0
+){
+
+payoutProfitRatio =
+ratio;
+
+log(
+"Observed payout ratio: " +
+(
+ratio * 100
+).toFixed(2) +
+"%"
+);
+
+}
+
+}
 
 
 if(!proposalId){
@@ -1878,18 +2159,50 @@ profit.toFixed(2)
 );
 
 
-/* RESET AFTER WIN */
+/*
+  If the session is positive,
+  reset to the original stake.
+
+  This locks the recovered profit
+  instead of carrying unnecessary
+  stake size forward.
+*/
+
+if(
+sessionPL >= 0
+){
 
 currentStake =
 Number(
 $("stake").value
 );
 
+log(
+"Net session is positive."
+);
 
 log(
 "Stake reset to $" +
 currentStake.toFixed(2)
 );
+
+}else{
+
+/*
+  If there is still a deficit,
+  keep the calculated recovery
+  process active.
+*/
+
+log(
+"Profit received but session still has deficit."
+);
+
+log(
+"Recovery remains active."
+);
+
+}
 
 }else{
 
@@ -1902,23 +2215,35 @@ profit.toFixed(2)
 );
 
 
+/*
+  Do not immediately multiply blindly.
+
+  The next trade is calculated by
+  startNextTrade() using:
+  accumulated loss +
+  desired profit +
+  observed payout.
+*/
+
 const multiplier =
 Number(
 $("multiplier").value
 );
 
 
+const multiplied =
+currentStake *
+multiplier;
+
+
 currentStake =
 Number(
-(
-currentStake *
-multiplier
-).toFixed(2)
+multiplied.toFixed(2)
 );
 
 
 log(
-"Recovery stake: $" +
+"Base recovery stake: $" +
 currentStake.toFixed(2)
 );
 
@@ -1976,7 +2301,7 @@ sessionPL >= tp
 ){
 
 stopBot(
-"TAKE PROFIT reached."
+"PROFIT TARGET reached."
 );
 
 return;
@@ -1989,7 +2314,7 @@ sessionPL <= -sl
 ){
 
 stopBot(
-"STOP LOSS reached."
+"HARD STOP LOSS reached."
 );
 
 return;
@@ -2030,6 +2355,8 @@ log(
 "BOT STOPPED: " +
 reason
 );
+
+updateStats();
 
 }
 
