@@ -6,35 +6,170 @@
 </head>
 
 <body>
+
   <h1>Smart Recovery Bot</h1>
-  <p>Deriv Trading Bot</p>
+  <p>Deriv Digit Smart Recovery</p>
 
-  <label>Initial Stake ($)</label><br>
-  <input id="stake" type="number" value="0.10" step="0.01"><br><br>
+  <hr>
 
-  <label>Take Profit ($)</label><br>
-  <input id="tp" type="number" value="0.04" step="0.01"><br><br>
+  <h3>Account</h3>
 
-  <label>Stop Loss ($)</label><br>
-  <input id="sl" type="number" value="0.15" step="0.01"><br><br>
-
-  <label>Martingale Multiplier</label><br>
-  <input id="multiplier" type="number" value="1.0" step="0.1"><br><br>
-
-  <button onclick="connectDeriv()">CONNECT DERIV</button>
-  <button>START BOT</button>
-  <button>STOP BOT</button>
+  <select id="account">
+    <option value="">Select Account</option>
+  </select>
 
   <p>Status: <b id="status">Disconnected</b></p>
-  <p>Balance: <span id="balance">$0.00</span></p>
-  <p>Profit/Loss: <span id="profit">$0.00</span></p>
+  <p>Balance: <b id="balance">$0.00</b></p>
+
+  <hr>
+
+  <h3>Bot Settings</h3>
+
+  <label>Initial Stake ($)</label><br>
+  <input id="stake" type="number" value="0.10" min="0.10" step="0.01">
+  <br><br>
+
+  <label>Take Profit ($)</label><br>
+  <input id="tp" type="number" value="0.04" min="0.01" step="0.01">
+  <br><br>
+
+  <label>Stop Loss ($)</label><br>
+  <input id="sl" type="number" value="0.15" min="0.01" step="0.01">
+  <br><br>
+
+  <label>Martingale Multiplier</label><br>
+  <input id="multiplier" type="number" value="1.0" min="1.0" step="0.1">
+  <br><br>
+
+  <button onclick="connectDeriv()">CONNECT DERIV</button>
+  <button onclick="startBot()">START BOT</button>
+  <button onclick="stopBot()">STOP BOT</button>
+
+  <hr>
+
+  <h3>Bot Statistics</h3>
+
+  <p>Profit/Loss: <b id="profit">$0.00</b></p>
+  <p>Bot: <b id="botStatus">STOPPED</b></p>
 
   <script>
-    const BACKEND_URL = "https://smart-recovery-bot.onrender.com";
+
+    const BACKEND_URL =
+      "https://smart-recovery-bot.onrender.com";
+
+    let accounts = [];
 
     function connectDeriv() {
-      window.location.href = BACKEND_URL + "/login";
+      window.location.href =
+        BACKEND_URL + "/login";
     }
+
+    async function loadAccounts() {
+
+      try {
+
+        const response =
+          await fetch(
+            BACKEND_URL + "/api/balance"
+          );
+
+        const data =
+          await response.json();
+
+        if (!data.connected) {
+          document.getElementById("status")
+            .textContent = "Disconnected";
+          return;
+        }
+
+        accounts = data.accounts || [];
+
+        const selector =
+          document.getElementById("account");
+
+        selector.innerHTML = "";
+
+        accounts.forEach((account) => {
+
+          const option =
+            document.createElement("option");
+
+          option.value =
+            account.account_id;
+
+          option.textContent =
+            account.account_type.toUpperCase() +
+            " — $" +
+            account.balance;
+
+          selector.appendChild(option);
+
+        });
+
+        document.getElementById("status")
+          .textContent = "CONNECTED";
+
+        updateBalance();
+
+      } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status")
+          .textContent = "Connection Error";
+      }
+    }
+
+    function updateBalance() {
+
+      const selected =
+        document.getElementById("account").value;
+
+      const account =
+        accounts.find(
+          a => a.account_id === selected
+        );
+
+      if (account) {
+
+        document.getElementById("balance")
+          .textContent =
+          "$" + account.balance;
+      }
+    }
+
+    document
+      .getElementById("account")
+      .addEventListener(
+        "change",
+        updateBalance
+      );
+
+    function startBot() {
+
+      const account =
+        document.getElementById("account").value;
+
+      if (!account) {
+        alert("Connect Deriv and select an account first.");
+        return;
+      }
+
+      alert(
+        "Trading engine is not enabled yet. Do NOT trade yet."
+      );
+    }
+
+    function stopBot() {
+
+      document.getElementById("botStatus")
+        .textContent = "STOPPED";
+
+    }
+
+    loadAccounts();
+
   </script>
+
 </body>
 </html>
