@@ -13,7 +13,7 @@ body{
   padding:20px;
   font-family:Arial,sans-serif;
   background:#0f172a;
-  color:white
+  color:#fff
 }
 
 .container{
@@ -21,7 +21,10 @@ body{
   margin:auto
 }
 
-h1{text-align:center;margin-bottom:5px}
+h1{
+  text-align:center;
+  margin-bottom:5px
+}
 
 .subtitle{
   text-align:center;
@@ -43,9 +46,13 @@ h1{text-align:center;margin-bottom:5px}
   margin:10px 0
 }
 
-.label{color:#94a3b8}
+.label{
+  color:#94a3b8
+}
 
-.value{font-weight:bold}
+.value{
+  font-weight:bold
+}
 
 input,select{
   width:100%;
@@ -55,7 +62,7 @@ input,select{
   border:1px solid #475569;
   border-radius:8px;
   background:#0f172a;
-  color:white;
+  color:#fff;
   font-size:16px
 }
 
@@ -70,10 +77,25 @@ button{
   cursor:pointer
 }
 
-#loginBtn{background:#2563eb;color:white}
-#connectBtn{background:#475569;color:white}
-#startBtn{background:#16a34a;color:white}
-#stopBtn{background:#dc2626;color:white}
+#loginBtn{
+  background:#2563eb;
+  color:#fff
+}
+
+#connectBtn{
+  background:#475569;
+  color:#fff
+}
+
+#startBtn{
+  background:#16a34a;
+  color:#fff
+}
+
+#stopBtn{
+  background:#dc2626;
+  color:#fff
+}
 
 button:disabled{
   opacity:.5;
@@ -90,13 +112,6 @@ button:disabled{
 .green{color:#22c55e}
 .red{color:#ef4444}
 .yellow{color:#facc15}
-
-.big-number{
-  font-size:30px;
-  font-weight:bold;
-  text-align:center;
-  margin:12px 0
-}
 
 .digit{
   font-size:45px;
@@ -199,9 +214,10 @@ Waiting...
 
 <div class="row">
 <span class="label">Last Digit</span>
-<span id="lastDigit" class="digit">
+</div>
+
+<div id="lastDigit" class="digit">
 -
-</span>
 </div>
 
 <div class="status">
@@ -221,14 +237,14 @@ WAITING
 <div class="row">
 <span class="label">Digit Contracts</span>
 <span id="contractStatus" class="yellow">
-CHECKING...
+WAITING
 </span>
 </div>
 
 <div class="row">
 <span class="label">Digit Diff</span>
 <span id="digitDiffStatus" class="yellow">
--
+WAITING
 </span>
 </div>
 
@@ -343,7 +359,6 @@ STOPPED
 const API =
 "https://smart-recovery-bot.onrender.com";
 
-
 let accounts = [];
 let selectedAccount = null;
 let socket = null;
@@ -385,6 +400,14 @@ text;
 }
 
 
+function setClass(id,className){
+
+document.getElementById(id).className =
+className;
+
+}
+
+
 function money(value){
 
 const number = Number(value);
@@ -399,7 +422,7 @@ return "$" + number.toFixed(2);
 
 
 /*
-LOAD DERIV ACCOUNTS
+GET ACCOUNTS
 */
 
 async function loadAccounts(){
@@ -407,10 +430,19 @@ async function loadAccounts(){
 try{
 
 const response =
-await fetch(API + "/api/balance");
+await fetch(
+API + "/api/balance"
+);
 
 if(!response.ok){
+
+console.log(
+"Balance request failed:",
+response.status
+);
+
 return;
+
 }
 
 const data =
@@ -426,10 +458,11 @@ accountSelect.innerHTML = "";
 
 
 /*
-CREATE ACCOUNT OPTIONS
+ADD ACCOUNTS TO DROPDOWN
 */
 
-accounts.forEach(account => {
+accounts.forEach(
+(account,index) => {
 
 const option =
 document.createElement("option");
@@ -438,13 +471,8 @@ option.value =
 account.account_id;
 
 
-const type =
-String(
-account.account_type || ""
-).toUpperCase();
-
-
 let accountBalance = 0;
+
 
 if(
 typeof account.balance === "object" &&
@@ -469,36 +497,59 @@ accountBalance = 0;
 }
 
 
+const type =
+String(
+account.account_type || ""
+).toUpperCase();
+
+
 option.textContent =
 `${type} - ${account.account_id} - ${money(accountBalance)}`;
 
 
 accountSelect.appendChild(option);
 
-});
+}
+);
 
 
 /*
-AUTOMATICALLY SELECT DEMO
+SELECT DEMO ACCOUNT
 */
 
-if(accounts.length > 0){
-
 const demoAccount =
-accounts.find(account =>
+accounts.find(
+account =>
 String(
 account.account_type || ""
 ).toLowerCase() === "demo"
 );
 
 
-selectedAccount =
-demoAccount || accounts[0];
+if(demoAccount){
 
+selectedAccount =
+demoAccount;
 
 accountSelect.value =
-selectedAccount.account_id;
+demoAccount.account_id;
 
+}else if(accounts.length > 0){
+
+selectedAccount =
+accounts[0];
+
+accountSelect.value =
+accounts[0].account_id;
+
+}
+
+
+/*
+ENABLE ACCOUNT CONTROLS
+*/
+
+if(accounts.length > 0){
 
 accountSelect.disabled = false;
 
@@ -510,90 +561,15 @@ setText(
 "CONNECTED"
 );
 
-document
-.getElementById("connectionStatus")
-.className = "green";
+setClass(
+"connectionStatus",
+"green"
+);
 
 
 /*
-SHOW SELECTED ACCOUNT BALANCE
+SHOW DEMO BALANCE
 */
-
-let selectedBalance = 0;
-
-if(
-typeof selectedAccount.balance === "object" &&
-selectedAccount.balance !== null
-){
-
-selectedBalance =
-Number(
-selectedAccount.balance.balance
-);
-
-}else{
-
-selectedBalance =
-Number(selectedAccount.balance);
-
-}
-
-
-if(Number.isFinite(selectedBalance)){
-
-currentBalance =
-selectedBalance;
-
-startingBalance =
-selectedBalance;
-
-
-setText(
-"balance",
-money(selectedBalance)
-);
-
-setText(
-"startingBalance",
-money(selectedBalance)
-);
-
-setText(
-"currentBalance",
-money(selectedBalance)
-);
-
-}
-
-}
-
-}catch(error){
-
-console.error(
-"Account loading error:",
-error
-);
-
-}
-
-}
-
-
-/*
-ACCOUNT SELECTION
-*/
-
-accountSelect.addEventListener(
-"change",
-() => {
-
-selectedAccount =
-accounts.find(
-account =>
-account.account_id ===
-accountSelect.value
-);
-
 
 if(selectedAccount){
 
@@ -613,7 +589,9 @@ selectedAccount.balance.balance
 }else{
 
 balanceValue =
-Number(selectedAccount.balance);
+Number(
+selectedAccount.balance
+);
 
 }
 
@@ -647,6 +625,111 @@ money(balanceValue)
 }
 
 }
+
+}catch(error){
+
+console.error(
+"Account loading error:",
+error
+);
+
+}
+
+}
+
+
+/*
+WHEN ACCOUNT IS CHANGED
+*/
+
+accountSelect.addEventListener(
+"change",
+function(){
+
+const accountId =
+this.value;
+
+
+selectedAccount =
+accounts.find(
+account =>
+account.account_id ===
+accountId
+);
+
+
+if(!selectedAccount){
+return;
+}
+
+
+let balanceValue = 0;
+
+
+if(
+typeof selectedAccount.balance === "object" &&
+selectedAccount.balance !== null
+){
+
+balanceValue =
+Number(
+selectedAccount.balance.balance
+);
+
+}else{
+
+balanceValue =
+Number(
+selectedAccount.balance
+);
+
+}
+
+
+if(Number.isFinite(balanceValue)){
+
+currentBalance =
+balanceValue;
+
+startingBalance =
+balanceValue;
+
+
+setText(
+"balance",
+money(balanceValue)
+);
+
+setText(
+"startingBalance",
+money(balanceValue)
+);
+
+setText(
+"currentBalance",
+money(balanceValue)
+);
+
+updatePL();
+
+}
+
+}
+);
+
+
+/*
+CONNECT DERIV
+*/
+
+loginBtn.addEventListener(
+"click",
+function(){
+
+window.location.href =
+API + "/login";
+
+}
 );
 
 
@@ -656,13 +739,23 @@ CONNECT TRADING
 
 connectBtn.addEventListener(
 "click",
-async () => {
+async function(){
 
 
-if(!selectedAccount){
+/*
+IMPORTANT:
+READ THE ACTUAL DROPDOWN VALUE
+EVERY TIME.
+*/
+
+const accountId =
+accountSelect.value;
+
+
+if(!accountId){
 
 alert(
-"Select a trading account first."
+"Please select the DEMO account first."
 );
 
 return;
@@ -671,17 +764,50 @@ return;
 
 
 /*
-REAL ACCOUNT HARD LOCK
+FIND THE ACCOUNT USING ITS ID
 */
 
-if(
-String(
-selectedAccount.account_type || ""
-).toLowerCase() !== "demo"
-){
+const account =
+accounts.find(
+item =>
+item.account_id ===
+accountId
+);
+
+
+if(!account){
 
 alert(
-"DEMO TEST MODE: Select the DEMO account."
+"Account was not found. Please reconnect Deriv."
+);
+
+return;
+
+}
+
+
+/*
+STORE IT
+*/
+
+selectedAccount =
+account;
+
+
+/*
+REAL ACCOUNT LOCK
+*/
+
+const accountType =
+String(
+account.account_type || ""
+).toLowerCase();
+
+
+if(accountType !== "demo"){
+
+alert(
+"DEMO TEST MODE: Real trading is locked. Please select the DEMO account."
 );
 
 return;
@@ -697,13 +823,19 @@ setText(
 "CONNECTING..."
 );
 
-document
-.getElementById("tradingStatus")
-.className = "yellow";
+setClass(
+"tradingStatus",
+"yellow"
+);
 
 
 try{
 
+
+/*
+REQUEST SHORT-LIVED
+DERIV WEBSOCKET URL
+*/
 
 const response =
 await fetch(
@@ -717,8 +849,7 @@ headers:{
 },
 
 body:JSON.stringify({
-account_id:
-selectedAccount.account_id
+account_id:accountId
 })
 
 }
@@ -733,14 +864,23 @@ if(!response.ok){
 
 throw new Error(
 data.error ||
-"Unable to connect trading."
+"Unable to create trading connection."
+);
+
+}
+
+
+if(!data.websocket_url){
+
+throw new Error(
+"Deriv did not provide a WebSocket URL."
 );
 
 }
 
 
 /*
-DIRECT DERIV WEBSOCKET
+CONNECT DIRECTLY TO DERIV
 */
 
 socket =
@@ -749,7 +889,8 @@ data.websocket_url
 );
 
 
-socket.onopen = () => {
+socket.onopen =
+function(){
 
 connected = true;
 
@@ -759,9 +900,10 @@ setText(
 "READY"
 );
 
-document
-.getElementById("tradingStatus")
-.className = "green";
+setClass(
+"tradingStatus",
+"green"
+);
 
 
 /*
@@ -777,7 +919,7 @@ subscribe:1
 
 
 /*
-R_25 TICKS
+R_25 LIVE TICKS
 */
 
 socket.send(
@@ -789,7 +931,7 @@ subscribe:1
 
 
 /*
-CHECK DIGIT CONTRACTS
+CHECK AVAILABLE CONTRACTS
 */
 
 socket.send(
@@ -804,18 +946,20 @@ setText(
 "LIVE"
 );
 
-document
-.getElementById("marketStatus")
-.className = "green";
+setClass(
+"marketStatus",
+"green"
+);
 
 };
 
 
 /*
-WEBSOCKET MESSAGE
+MESSAGES
 */
 
-socket.onmessage = event => {
+socket.onmessage =
+function(event){
 
 try{
 
@@ -828,7 +972,8 @@ BALANCE
 */
 
 if(
-message.msg_type === "balance"
+message.msg_type ===
+"balance"
 ){
 
 const value =
@@ -848,17 +993,17 @@ if(startingBalance === 0){
 startingBalance =
 value;
 
-setText(
-"startingBalance",
-money(value)
-);
-
 }
 
 
 setText(
 "balance",
 money(value)
+);
+
+setText(
+"startingBalance",
+money(startingBalance)
 );
 
 setText(
@@ -878,7 +1023,8 @@ TICK
 */
 
 if(
-message.msg_type === "tick"
+message.msg_type ===
+"tick"
 ){
 
 const quote =
@@ -903,10 +1049,15 @@ tickText
 LAST DIGIT
 */
 
+const digits =
+tickText.replace(
+/[^0-9]/g,
+""
+);
+
+
 const digit =
-tickText
-.replace(/[^0-9]/g,"")
-.slice(-1);
+digits.slice(-1);
 
 
 setText(
@@ -925,7 +1076,7 @@ updateStartButton();
 
 
 /*
-CONTRACT CHECK
+CONTRACTS
 */
 
 if(
@@ -933,7 +1084,7 @@ message.msg_type ===
 "contracts_for"
 ){
 
-const contracts =
+const available =
 message.contracts_for
 ?.available || [];
 
@@ -950,35 +1101,32 @@ const digitTypes = [
 ];
 
 
-const found =
-contracts.filter(
+const digitContracts =
+available.filter(
 contract =>
 digitTypes.includes(
 String(
-contract.contract_type
+contract.contract_type || ""
 ).toUpperCase()
 )
 );
 
 
 digitContractsAvailable =
-found.length > 0;
+digitContracts.length > 0;
 
 
-if(
-digitContractsAvailable
-){
+if(digitContractsAvailable){
 
 setText(
 "contractStatus",
 "AVAILABLE"
 );
 
-document
-.getElementById(
-"contractStatus"
-)
-.className = "green";
+setClass(
+"contractStatus",
+"green"
+);
 
 }else{
 
@@ -987,11 +1135,10 @@ setText(
 "NOT AVAILABLE"
 );
 
-document
-.getElementById(
-"contractStatus"
-)
-.className = "red";
+setClass(
+"contractStatus",
+"red"
+);
 
 }
 
@@ -1000,28 +1147,27 @@ document
 DIGIT DIFFERENCE
 */
 
-const diff =
-found.find(
+const digitDiff =
+digitContracts.find(
 contract =>
 String(
-contract.contract_type
+contract.contract_type || ""
 ).toUpperCase() ===
 "DIGITDIFF"
 );
 
 
-if(diff){
+if(digitDiff){
 
 setText(
 "digitDiffStatus",
 "AVAILABLE"
 );
 
-document
-.getElementById(
-"digitDiffStatus"
-)
-.className = "green";
+setClass(
+"digitDiffStatus",
+"green"
+);
 
 }else{
 
@@ -1030,11 +1176,10 @@ setText(
 "NOT FOUND"
 );
 
-document
-.getElementById(
-"digitDiffStatus"
-)
-.className = "red";
+setClass(
+"digitDiffStatus",
+"red"
+);
 
 }
 
@@ -1046,7 +1191,7 @@ updateStartButton();
 }catch(error){
 
 console.error(
-"Message error:",
+"Message processing error:",
 error
 );
 
@@ -1059,10 +1204,11 @@ error
 WEBSOCKET ERROR
 */
 
-socket.onerror = error => {
+socket.onerror =
+function(error){
 
 console.error(
-"Trading WebSocket error:",
+"Deriv WebSocket error:",
 error
 );
 
@@ -1072,9 +1218,10 @@ setText(
 "ERROR"
 );
 
-document
-.getElementById("tradingStatus")
-.className = "red";
+setClass(
+"tradingStatus",
+"red"
+);
 
 
 connectBtn.disabled = false;
@@ -1083,21 +1230,24 @@ connectBtn.disabled = false;
 
 
 /*
-WEBSOCKET CLOSE
+WEBSOCKET CLOSED
 */
 
-socket.onclose = () => {
+socket.onclose =
+function(){
 
 connected = false;
+
 
 setText(
 "tradingStatus",
 "DISCONNECTED"
 );
 
-document
-.getElementById("tradingStatus")
-.className = "red";
+setClass(
+"tradingStatus",
+"red"
+);
 
 
 startBtn.disabled = true;
@@ -1108,17 +1258,27 @@ connectBtn.disabled = false;
 
 }catch(error){
 
-console.error(error);
+console.error(
+"Trading connection error:",
+error
+);
 
 alert(
 error.message
 );
 
+
 connectBtn.disabled = false;
+
 
 setText(
 "tradingStatus",
 "ERROR"
+);
+
+setClass(
+"tradingStatus",
+"red"
 );
 
 }
@@ -1128,7 +1288,7 @@ setText(
 
 
 /*
-START BUTTON
+ENABLE START BUTTON
 */
 
 function updateStartButton(){
@@ -1154,16 +1314,20 @@ startBtn.disabled = true;
 }
 
 
+/*
+START BOT
+*/
+
 startBtn.addEventListener(
 "click",
-() => {
+function(){
 
 /*
-TRADING EXECUTION IS STILL LOCKED.
+ACTUAL BUY IS STILL LOCKED
 */
 
 alert(
-"Demo connection is ready. The next step is enabling the actual Digit contract proposal and demo trade execution."
+"DEMO connection is ready. Actual Digit trade execution is the next step."
 );
 
 }
@@ -1171,30 +1335,32 @@ alert(
 
 
 /*
-STOP BUTTON
+STOP BOT
 */
 
 stopBtn.addEventListener(
 "click",
-() => {
+function(){
 
 botRunning = false;
+
 
 setText(
 "botStatus",
 "STOPPED"
 );
 
-document
-.getElementById("botStatus")
-.className = "red";
+setClass(
+"botStatus",
+"red"
+);
 
 }
 );
 
 
 /*
-SESSION P/L
+P/L
 */
 
 function updatePL(){
@@ -1212,15 +1378,17 @@ money(pl)
 
 if(pl >= 0){
 
-document
-.getElementById("sessionPL")
-.className = "green";
+setClass(
+"sessionPL",
+"green"
+);
 
 }else{
 
-document
-.getElementById("sessionPL")
-.className = "red";
+setClass(
+"sessionPL",
+"red"
+);
 
 }
 
@@ -1228,7 +1396,7 @@ document
 
 
 /*
-INITIALIZE
+INITIAL CHECK
 */
 
 async function init(){
@@ -1256,7 +1424,7 @@ await loadAccounts();
 }catch(error){
 
 console.error(
-"Initialization error:",
+"Initial connection check failed:",
 error
 );
 
