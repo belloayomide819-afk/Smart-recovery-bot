@@ -1,175 +1,618 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>Smart Recovery Bot</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin-top: 25px;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    select,
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 6px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #connectBtn {
+      background: #222;
+      color: white;
+    }
+
+    #tradingBtn {
+      background: #555;
+      color: white;
+    }
+
+    #startBtn {
+      background: #16803c;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #c62828;
+      color: white;
+    }
+
+    .card {
+      margin-top: 15px;
+      padding: 15px;
+      background: #f7f7f7;
+      border-radius: 10px;
+    }
+
+    .status {
+      font-weight: bold;
+    }
+
+    .green {
+      color: green;
+    }
+
+    .red {
+      color: red;
+    }
+
+    .warning {
+      margin-top: 15px;
+      padding: 12px;
+      background: #fff3cd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
 
+<div class="container">
+
   <h1>Smart Recovery Bot</h1>
-  <p>Deriv Digit Smart Recovery</p>
 
-  <hr>
+  <p><strong>Deriv Digit Smart Recovery</strong></p>
 
-  <h3>Account</h3>
+  <h2>Account</h2>
 
-  <select id="account">
+  <select id="accountSelect">
     <option value="">Select Account</option>
   </select>
 
-  <p>Status: <b id="status">Disconnected</b></p>
-  <p>Balance: <b id="balance">$0.00</b></p>
+  <div class="card">
 
-  <hr>
+    <div>
+      Status:
+      <span id="status" class="status">
+        DISCONNECTED
+      </span>
+    </div>
 
-  <h3>Bot Settings</h3>
+    <div style="margin-top:10px;">
+      Balance:
+      <strong id="balance">
+        $0.00
+      </strong>
+    </div>
 
-  <label>Initial Stake ($)</label><br>
-  <input id="stake" type="number" value="0.10" min="0.10" step="0.01">
-  <br><br>
+    <div style="margin-top:10px;">
+      Trading:
+      <span id="tradingStatus" class="status">
+        NOT CONNECTED
+      </span>
+    </div>
 
-  <label>Take Profit ($)</label><br>
-  <input id="tp" type="number" value="0.04" min="0.01" step="0.01">
-  <br><br>
+  </div>
 
-  <label>Stop Loss ($)</label><br>
-  <input id="sl" type="number" value="0.15" min="0.01" step="0.01">
-  <br><br>
+  <h2>Bot Settings</h2>
 
-  <label>Martingale Multiplier</label><br>
-  <input id="multiplier" type="number" value="1.0" min="1.0" step="0.1">
-  <br><br>
+  <label for="stake">
+    Initial Stake ($)
+  </label>
 
-  <button onclick="connectDeriv()">CONNECT DERIV</button>
-  <button onclick="startBot()">START BOT</button>
-  <button onclick="stopBot()">STOP BOT</button>
+  <input
+    id="stake"
+    type="number"
+    step="0.01"
+    value="0.10"
+  >
 
-  <hr>
+  <label for="takeProfit">
+    Take Profit ($)
+  </label>
 
-  <h3>Bot Statistics</h3>
+  <input
+    id="takeProfit"
+    type="number"
+    step="0.01"
+    value="0.04"
+  >
 
-  <p>Profit/Loss: <b id="profit">$0.00</b></p>
-  <p>Bot: <b id="botStatus">STOPPED</b></p>
+  <label for="stopLoss">
+    Stop Loss ($)
+  </label>
 
-  <script>
+  <input
+    id="stopLoss"
+    type="number"
+    step="0.01"
+    value="0.15"
+  >
 
-    const BACKEND_URL =
-      "https://smart-recovery-bot.onrender.com";
+  <label for="multiplier">
+    Martingale Multiplier
+  </label>
 
-    let accounts = [];
+  <input
+    id="multiplier"
+    type="number"
+    step="0.01"
+    value="1.00"
+  >
 
-    function connectDeriv() {
-      window.location.href =
-        BACKEND_URL + "/login";
+  <button
+    id="connectBtn"
+    onclick="connectDeriv()"
+  >
+    CONNECT DERIV
+  </button>
+
+  <button
+    id="tradingBtn"
+    onclick="connectTrading()"
+  >
+    CONNECT TRADING
+  </button>
+
+  <button
+    id="startBtn"
+    onclick="startBot()"
+  >
+    START BOT
+  </button>
+
+  <button
+    id="stopBtn"
+    onclick="stopBot()"
+  >
+    STOP BOT
+  </button>
+
+  <div class="warning">
+    DEMO TEST MODE: The bot will not place a trade until the
+    trading engine is explicitly enabled.
+  </div>
+
+  <h2>Bot Statistics</h2>
+
+  <div class="card">
+
+    <div>
+      Profit/Loss:
+      <strong id="profitLoss">
+        $0.00
+      </strong>
+    </div>
+
+    <div style="margin-top:10px;">
+      Bot:
+      <strong id="botStatus">
+        STOPPED
+      </strong>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+const API =
+  "https://smart-recovery-bot.onrender.com";
+
+let connectedAccounts = [];
+
+
+// ======================================
+// LOAD ACCOUNT DATA
+// ======================================
+
+async function loadAccounts() {
+
+  try {
+
+    const response =
+      await fetch(API + "/api/balance");
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        "Unable to load account data."
+      );
+
     }
 
-    async function loadAccounts() {
+    connectedAccounts =
+      data.accounts || [];
 
-      try {
+    const select =
+      document.getElementById(
+        "accountSelect"
+      );
 
-        const response =
-          await fetch(
-            BACKEND_URL + "/api/balance"
+    select.innerHTML =
+      '<option value="">Select Account</option>';
+
+    connectedAccounts.forEach(
+      account => {
+
+        const option =
+          document.createElement(
+            "option"
           );
 
-        const data =
-          await response.json();
+        option.value =
+          account.account_id;
 
-        if (!data.connected) {
-          document.getElementById("status")
-            .textContent = "Disconnected";
-          return;
+        option.textContent =
+          `${account.account_type.toUpperCase()} — $${account.balance}`;
+
+        select.appendChild(option);
+
+      }
+    );
+
+    document.getElementById(
+      "status"
+    ).textContent =
+      "CONNECTED";
+
+    document.getElementById(
+      "status"
+    ).className =
+      "status green";
+
+    updateBalance();
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById(
+      "status"
+    ).textContent =
+      "DISCONNECTED";
+
+    document.getElementById(
+      "status"
+    ).className =
+      "status red";
+
+  }
+
+}
+
+
+// ======================================
+// UPDATE BALANCE
+// ======================================
+
+function updateBalance() {
+
+  const accountId =
+    document.getElementById(
+      "accountSelect"
+    ).value;
+
+  const account =
+    connectedAccounts.find(
+      item =>
+        item.account_id === accountId
+    );
+
+  if (!account) {
+
+    document.getElementById(
+      "balance"
+    ).textContent =
+      "$0.00";
+
+    return;
+
+  }
+
+  document.getElementById(
+    "balance"
+  ).textContent =
+    `$${account.balance}`;
+
+}
+
+
+// ======================================
+// ACCOUNT CHANGED
+// ======================================
+
+document
+  .getElementById("accountSelect")
+  .addEventListener(
+    "change",
+    updateBalance
+  );
+
+
+// ======================================
+// CONNECT DERIV
+// ======================================
+
+function connectDeriv() {
+
+  window.location.href =
+    API + "/login";
+
+}
+
+
+// ======================================
+// CONNECT TRADING
+// ======================================
+
+async function connectTrading() {
+
+  const accountId =
+    document.getElementById(
+      "accountSelect"
+    ).value;
+
+  if (!accountId) {
+
+    alert(
+      "Please select an account first."
+    );
+
+    return;
+
+  }
+
+  const button =
+    document.getElementById(
+      "tradingBtn"
+    );
+
+  button.disabled = true;
+
+  button.textContent =
+    "CONNECTING...";
+
+  try {
+
+    const response =
+      await fetch(
+        API + "/api/connect-trading",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            account_id:
+              accountId
+          })
         }
-
-        accounts = data.accounts || [];
-
-        const selector =
-          document.getElementById("account");
-
-        selector.innerHTML = "";
-
-        accounts.forEach((account) => {
-
-          const option =
-            document.createElement("option");
-
-          option.value =
-            account.account_id;
-
-          option.textContent =
-            account.account_type.toUpperCase() +
-            " — $" +
-            account.balance;
-
-          selector.appendChild(option);
-
-        });
-
-        document.getElementById("status")
-          .textContent = "CONNECTED";
-
-        updateBalance();
-
-      } catch (error) {
-
-        console.error(error);
-
-        document.getElementById("status")
-          .textContent = "Connection Error";
-      }
-    }
-
-    function updateBalance() {
-
-      const selected =
-        document.getElementById("account").value;
-
-      const account =
-        accounts.find(
-          a => a.account_id === selected
-        );
-
-      if (account) {
-
-        document.getElementById("balance")
-          .textContent =
-          "$" + account.balance;
-      }
-    }
-
-    document
-      .getElementById("account")
-      .addEventListener(
-        "change",
-        updateBalance
       );
 
-    function startBot() {
+    const data =
+      await response.json();
 
-      const account =
-        document.getElementById("account").value;
+    if (!response.ok) {
 
-      if (!account) {
-        alert("Connect Deriv and select an account first.");
-        return;
-      }
-
-      alert(
-        "Trading engine is not enabled yet. Do NOT trade yet."
+      throw new Error(
+        data.error ||
+        "Trading connection failed."
       );
-    }
-
-    function stopBot() {
-
-      document.getElementById("botStatus")
-        .textContent = "STOPPED";
 
     }
 
-    loadAccounts();
+    document.getElementById(
+      "tradingStatus"
+    ).textContent =
+      "READY";
 
-  </script>
+    document.getElementById(
+      "tradingStatus"
+    ).className =
+      "status green";
+
+    alert(
+      "Trading connection is ready. No trade was placed."
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    document.getElementById(
+      "tradingStatus"
+    ).textContent =
+      "FAILED";
+
+    document.getElementById(
+      "tradingStatus"
+    ).className =
+      "status red";
+
+    alert(
+      error.message
+    );
+
+  } finally {
+
+    button.disabled = false;
+
+    button.textContent =
+      "CONNECT TRADING";
+
+  }
+
+}
+
+
+// ======================================
+// START BOT
+// ======================================
+
+function startBot() {
+
+  const accountId =
+    document.getElementById(
+      "accountSelect"
+    ).value;
+
+  if (!accountId) {
+
+    alert(
+      "Please select an account first."
+    );
+
+    return;
+
+  }
+
+  const stake =
+    parseFloat(
+      document.getElementById(
+        "stake"
+      ).value
+    );
+
+  const takeProfit =
+    parseFloat(
+      document.getElementById(
+        "takeProfit"
+      ).value
+    );
+
+  const stopLoss =
+    parseFloat(
+      document.getElementById(
+        "stopLoss"
+      ).value
+    );
+
+  const multiplier =
+    parseFloat(
+      document.getElementById(
+        "multiplier"
+      ).value
+    );
+
+  if (
+    !stake ||
+    stake <= 0 ||
+    !takeProfit ||
+    takeProfit <= 0 ||
+    !stopLoss ||
+    stopLoss <= 0 ||
+    !multiplier ||
+    multiplier <= 0
+  ) {
+
+    alert(
+      "Please enter valid bot settings."
+    );
+
+    return;
+
+  }
+
+  alert(
+    "Trading engine is not enabled yet. No trade was placed."
+  );
+
+}
+
+
+// ======================================
+// STOP BOT
+// ======================================
+
+function stopBot() {
+
+  document.getElementById(
+    "botStatus"
+  ).textContent =
+    "STOPPED";
+
+  alert(
+    "Bot stopped."
+  );
+
+}
+
+
+// ======================================
+// INITIAL LOAD
+// ======================================
+
+loadAccounts();
+
+</script>
 
 </body>
 </html>
