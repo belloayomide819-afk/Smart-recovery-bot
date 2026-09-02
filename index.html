@@ -139,7 +139,7 @@ label{
   background:#020617;
   border-radius:9px;
   padding:10px;
-  height:220px;
+  height:240px;
   overflow:auto;
   font-size:13px;
   color:#cbd5e1;
@@ -922,7 +922,7 @@ log(
 );
 
 log(
-"Actual digit trade execution is now enabled."
+"Waiting for trade execution."
 );
 
 subscribeTicks();
@@ -1091,13 +1091,7 @@ function checkContracts(){
 send({
 
 contracts_for:
-SYMBOL,
-
-currency:
-"USD",
-
-product_type:
-"basic"
+SYMBOL
 
 });
 
@@ -1558,7 +1552,7 @@ duration:
 duration_unit:
 "t",
 
-symbol:
+underlying_symbol:
 SYMBOL,
 
 barrier:
@@ -1721,26 +1715,6 @@ false;
 
 log(
 "BUY response was empty."
-);
-
-setTimeout(
-startNextTrade,
-1000
-);
-
-return;
-
-}
-
-
-if(buy.error){
-
-tradeInProgress =
-false;
-
-log(
-"BUY ERROR: " +
-buy.error
 );
 
 setTimeout(
