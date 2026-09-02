@@ -151,7 +151,7 @@ button:disabled{
   border:1px solid #27313d;
   border-radius:10px;
   padding:12px;
-  height:260px;
+  height:280px;
   overflow-y:auto;
   font-family:monospace;
   font-size:12px;
@@ -175,6 +175,7 @@ button:disabled{
 }
 
 @media(max-width:650px){
+
   .grid{
     grid-template-columns:1fr;
   }
@@ -182,6 +183,7 @@ button:disabled{
   .stats{
     grid-template-columns:repeat(2,1fr);
   }
+
 }
 </style>
 </head>
@@ -325,6 +327,28 @@ Only DEMO accounts can be used while testing.
 
 <div>
 
+<label>Prediction Digit</label>
+
+<select id="predictionDigit">
+
+<option value="0">0</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5" selected>5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+<option value="9">9</option>
+
+</select>
+
+</div>
+
+
+<div>
+
 <label>Contract</label>
 
 <input
@@ -338,8 +362,17 @@ Only DEMO accounts can be used while testing.
 </div>
 
 <p class="small">
+
+DIGITDIFF with Prediction Digit 5 means the contract is predicting
+that the last digit will differ from 5.
+
+</p>
+
+<p class="small">
+
 The session stop loss resets the current session automatically.
 It does not guarantee recovery or profit.
+
 </p>
 
 </div>
@@ -428,6 +461,7 @@ Bot: IDLE
 </div>
 
 </div>
+
 </div>
 
 
@@ -535,7 +569,9 @@ let restartTimer =
 ========================================= */
 
 function $(id){
+
   return document.getElementById(id);
+
 }
 
 
@@ -560,6 +596,7 @@ function log(message){
 
   box.scrollTop =
     box.scrollHeight;
+
 }
 
 
@@ -599,6 +636,7 @@ function updateStats(){
   let needed =
     0;
 
+
   if(sessionPL < 0){
 
     const target =
@@ -609,11 +647,14 @@ function updateStats(){
     needed =
       Math.abs(sessionPL) +
       target;
+
   }
+
 
   $("recoveryNeeded").textContent =
     "$" +
     needed.toFixed(2);
+
 }
 
 
@@ -626,16 +667,20 @@ function connectDeriv(){
   $("connectBtn").disabled =
     true;
 
+
   $("connectionStatus").innerHTML =
     '<span class="yellow">Connecting...</span>';
+
 
   log(
     "Opening Deriv authorization..."
   );
 
+
   window.location.href =
     BACKEND +
     "/login";
+
 }
 
 
@@ -653,27 +698,35 @@ async function checkConnection(){
         "/api/status"
       );
 
+
     const data =
       await response.json();
+
 
     if(data.connected){
 
       $("connectionStatus").innerHTML =
         '<span class="green">Deriv CONNECTED</span>';
 
+
       log(
         "Deriv account connected."
       );
 
+
       await loadAccounts();
+
     }
+
 
   }catch(error){
 
     log(
       "Connection check failed."
     );
+
   }
+
 }
 
 
@@ -691,8 +744,10 @@ async function loadAccounts(){
         "/api/balance"
       );
 
+
     const data =
       await response.json();
+
 
     if(!response.ok){
 
@@ -700,7 +755,9 @@ async function loadAccounts(){
         data.error ||
         "Unable to load accounts."
       );
+
     }
+
 
     const accounts =
       data.accounts ||
@@ -720,6 +777,7 @@ async function loadAccounts(){
     const select =
       $("accountSelect");
 
+
     select.innerHTML =
       "";
 
@@ -731,10 +789,13 @@ async function loadAccounts(){
       select.innerHTML =
         "<option>No DEMO account found</option>";
 
+
       $("startBtn").disabled =
         true;
 
+
       return;
+
     }
 
 
@@ -746,8 +807,10 @@ async function loadAccounts(){
             "option"
           );
 
+
         option.value =
           account.account_id;
+
 
         option.textContent =
           (
@@ -755,6 +818,7 @@ async function loadAccounts(){
             "DEMO"
           ) +
           " • DEMO";
+
 
         select.appendChild(
           option
@@ -775,11 +839,13 @@ async function loadAccounts(){
           this.value;
 
         getBalance();
+
       };
 
 
     $("accountBox").style.display =
       "block";
+
 
     $("startBtn").disabled =
       false;
@@ -792,11 +858,6 @@ async function loadAccounts(){
 
     await getBalance();
 
-
-    /*
-      Open the direct trading WebSocket
-      after the account is available.
-    */
 
     if(
       !ws ||
@@ -815,7 +876,9 @@ async function loadAccounts(){
       "Account loading error: " +
       error.message
     );
+
   }
+
 }
 
 
@@ -833,8 +896,10 @@ async function getBalance(){
         "/api/balance"
       );
 
+
     const data =
       await response.json();
+
 
     if(!response.ok){
 
@@ -842,6 +907,7 @@ async function getBalance(){
         data.error ||
         "Balance request failed."
       );
+
     }
 
 
@@ -867,13 +933,17 @@ async function getBalance(){
           0
         );
 
+
       updateStats();
+
 
       log(
         "Demo balance: $" +
         balance.toFixed(2)
       );
+
     }
+
 
   }catch(error){
 
@@ -881,12 +951,14 @@ async function getBalance(){
       "Balance error: " +
       error.message
     );
+
   }
+
 }
 
 
 /* =========================================
-   GET SHORT-LIVED TRADING URL
+   GET TRADING URL
 ========================================= */
 
 async function getTradingUrl(){
@@ -908,6 +980,7 @@ async function getTradingUrl(){
             account_id:
               selectedAccountId
           })
+
       }
     );
 
@@ -922,6 +995,7 @@ async function getTradingUrl(){
       data.error ||
       "Unable to create trading connection."
     );
+
   }
 
 
@@ -935,6 +1009,7 @@ async function getTradingUrl(){
     throw new Error(
       "Real trading is locked."
     );
+
   }
 
 
@@ -943,10 +1018,12 @@ async function getTradingUrl(){
     throw new Error(
       "Deriv did not return a trading WebSocket URL."
     );
+
   }
 
 
   return data.websocket_url;
+
 }
 
 
@@ -1006,15 +1083,18 @@ async function openTradingConnection(){
               event.data
             );
 
+
           handleDerivMessage(
             data
           );
+
 
         }catch(error){
 
           log(
             "Invalid Deriv message."
           );
+
         }
 
       };
@@ -1026,6 +1106,7 @@ async function openTradingConnection(){
         log(
           "Trading WebSocket error."
         );
+
       };
 
 
@@ -1034,6 +1115,7 @@ async function openTradingConnection(){
 
         tradingReady =
           false;
+
 
         tradeInProgress =
           false;
@@ -1052,6 +1134,7 @@ async function openTradingConnection(){
           $("startBtn").disabled =
             false;
 
+
           $("stopBtn").disabled =
             true;
 
@@ -1064,7 +1147,9 @@ async function openTradingConnection(){
 
           $("botStatus").innerHTML =
             "Bot: DISCONNECTED";
+
         }
+
       };
 
 
@@ -1075,9 +1160,12 @@ async function openTradingConnection(){
       error.message
     );
 
+
     $("botStatus").innerHTML =
       '<span class="red">Bot: CONNECTION ERROR</span>';
+
   }
+
 }
 
 
@@ -1103,8 +1191,8 @@ function handleDerivMessage(data){
 
 
     /*
-      If a proposal failed,
-      do not repeatedly fire requests.
+      If proposal fails, retry after
+      a short delay while bot is running.
     */
 
     if(
@@ -1127,10 +1215,12 @@ function handleDerivMessage(data){
         },
         2000
       );
+
     }
 
 
     return;
+
   }
 
 
@@ -1144,6 +1234,7 @@ function handleDerivMessage(data){
     );
 
     return;
+
   }
 
 
@@ -1157,6 +1248,7 @@ function handleDerivMessage(data){
     );
 
     return;
+
   }
 
 
@@ -1170,6 +1262,7 @@ function handleDerivMessage(data){
     );
 
     return;
+
   }
 
 
@@ -1186,15 +1279,18 @@ function handleDerivMessage(data){
           0
         );
 
+
       updateStats();
 
     }
+
   }
+
 }
 
 
 /* =========================================
-   REQUEST PROPOSAL
+   REQUEST DIGITDIFF PROPOSAL
 ========================================= */
 
 function requestProposal(){
@@ -1211,19 +1307,45 @@ function requestProposal(){
     );
 
     return;
+
   }
 
 
   if(!botRunning){
 
     return;
+
   }
 
 
-  const stake =
+  let stake =
     Number(
       currentStake
     );
+
+
+  const maxStake =
+    Number(
+      $("maxRecoveryStake").value
+    );
+
+
+  /*
+    Never exceed maximum recovery stake.
+  */
+
+  if(
+    stake >
+    maxStake
+  ){
+
+    stake =
+      maxStake;
+
+    currentStake =
+      maxStake;
+
+  }
 
 
   if(
@@ -1235,74 +1357,82 @@ function requestProposal(){
       "Invalid stake."
     );
 
+
     stopPermanently(
       "Invalid stake."
     );
 
+
     return;
+
   }
 
 
-  const maxStake =
-    Number(
-      $("maxRecoveryStake").value
+  const predictionDigit =
+    String(
+      $("predictionDigit").value
     );
-
-
-  if(
-    stake > maxStake
-  ){
-
-    currentStake =
-      maxStake;
-  }
 
 
   log(
     "Requesting DIGITDIFF proposal at $" +
-    currentStake.toFixed(2)
+    stake.toFixed(2) +
+    " | Prediction Digit: " +
+    predictionDigit
   );
 
 
   /*
     IMPORTANT:
-    DIGITDIFF does NOT use barrier:"".
-    The invalid barrier field has been removed.
+
+    DIGITDIFF requires the barrier/prediction
+    digit. We send it explicitly.
+
+    No empty barrier.
   */
 
+  const proposalRequest = {
+
+    proposal:1,
+
+    amount:
+      Number(
+        stake.toFixed(2)
+      ),
+
+    basis:
+      "stake",
+
+    contract_type:
+      CONTRACT_TYPE,
+
+    currency:
+      CURRENCY,
+
+    duration:
+      1,
+
+    duration_unit:
+      "t",
+
+    underlying_symbol:
+      SYMBOL,
+
+    barrier:
+      predictionDigit,
+
+    subscribe:
+      1
+
+  };
+
+
   ws.send(
-    JSON.stringify({
-
-      proposal: 1,
-
-      amount:
-        Number(
-          currentStake.toFixed(2)
-        ),
-
-      basis:
-        "stake",
-
-      contract_type:
-        CONTRACT_TYPE,
-
-      currency:
-        CURRENCY,
-
-      duration:
-        1,
-
-      duration_unit:
-        "t",
-
-      underlying_symbol:
-        SYMBOL,
-
-      subscribe:
-        1
-
-    })
+    JSON.stringify(
+      proposalRequest
+    )
   );
+
 }
 
 
@@ -1317,6 +1447,23 @@ function handleProposal(
   if(!proposal){
 
     return;
+
+  }
+
+
+  if(!proposal.id){
+
+    log(
+      "Deriv returned a proposal without an ID."
+    );
+
+
+    tradeInProgress =
+      false;
+
+
+    return;
+
   }
 
 
@@ -1352,7 +1499,25 @@ function handleProposal(
 
     payoutProfitRatio =
       0;
+
   }
+
+
+  log(
+    "Proposal received."
+  );
+
+
+  log(
+    "Ask price: $" +
+    askPrice.toFixed(2)
+  );
+
+
+  log(
+    "Payout: $" +
+    payout.toFixed(2)
+  );
 
 
   log(
@@ -1368,25 +1533,12 @@ function handleProposal(
   if(!botRunning){
 
     return;
-  }
 
-
-  if(!proposal.id){
-
-    log(
-      "Proposal did not contain a valid ID."
-    );
-
-    tradeInProgress =
-      false;
-
-    return;
   }
 
 
   /*
-    Buy the exact proposal
-    that was just returned.
+    Buy the returned proposal.
   */
 
   ws.send(
@@ -1402,6 +1554,7 @@ function handleProposal(
 
     })
   );
+
 }
 
 
@@ -1416,6 +1569,7 @@ function handleBuy(
   if(!buy){
 
     return;
+
   }
 
 
@@ -1425,10 +1579,13 @@ function handleBuy(
       "Trade was not opened."
     );
 
+
     tradeInProgress =
       false;
 
+
     return;
+
   }
 
 
@@ -1436,12 +1593,21 @@ function handleBuy(
     buy.contract_id;
 
 
+  processedContractId =
+    null;
+
+
   tradeInProgress =
     true;
 
 
   log(
-    "Trade opened. Contract ID: " +
+    "TRADE OPENED."
+  );
+
+
+  log(
+    "Contract ID: " +
     currentContractId
   );
 
@@ -1460,6 +1626,7 @@ function handleBuy(
 
     })
   );
+
 }
 
 
@@ -1474,8 +1641,13 @@ function handleOpenContract(
   if(!contract){
 
     return;
+
   }
 
+
+  /*
+    Wait until contract is actually finished.
+  */
 
   if(
     !contract.is_sold &&
@@ -1486,6 +1658,7 @@ function handleOpenContract(
   ){
 
     return;
+
   }
 
 
@@ -1494,11 +1667,21 @@ function handleOpenContract(
 
 
   if(
+    !contractId
+  ){
+
+    return;
+
+  }
+
+
+  if(
     processedContractId ===
     contractId
   ){
 
     return;
+
   }
 
 
@@ -1516,6 +1699,7 @@ function handleOpenContract(
   finishTrade(
     profit
   );
+
 }
 
 
@@ -1548,6 +1732,7 @@ function finishTrade(
       profit.toFixed(2)
     );
 
+
   }else if(profit < 0){
 
     losses++;
@@ -1558,15 +1743,18 @@ function finishTrade(
       profit.toFixed(2)
     );
 
+
   }else{
 
     log(
       "TRADE CLOSED: $0.00"
     );
+
   }
 
 
   updateStats();
+
 
   getBalance();
 
@@ -1590,7 +1778,9 @@ function finishTrade(
       "PROFIT TARGET reached."
     );
 
+
     return;
+
   }
 
 
@@ -1606,12 +1796,14 @@ function finishTrade(
 
   if(
     sessionPL <=
-      -stopLoss
+    -stopLoss
   ){
 
     automaticSessionReset();
 
+
     return;
+
   }
 
 
@@ -1649,6 +1841,7 @@ function finishTrade(
 
       nextStake =
         maxStake;
+
     }
 
 
@@ -1672,12 +1865,15 @@ function finishTrade(
   }else if(profit > 0){
 
     /*
-      If the session is back
-      at zero or positive,
-      recovery is complete.
+      If session has recovered back
+      to zero or positive, return to
+      initial stake.
     */
 
-    if(sessionPL >= 0){
+    if(
+      sessionPL >=
+      0
+    ){
 
       recoveryMode =
         false;
@@ -1707,14 +1903,16 @@ function finishTrade(
 
 
       log(
-        "Win received, but session is still negative."
+        "Win received, but session remains negative."
       );
 
 
       log(
         "Recovery continues."
       );
+
     }
+
   }
 
 
@@ -1731,7 +1929,9 @@ function finishTrade(
       startNextTrade,
       1500
     );
+
   }
+
 }
 
 
@@ -1744,6 +1944,7 @@ function startNextTrade(){
   if(!botRunning){
 
     return;
+
   }
 
 
@@ -1754,12 +1955,14 @@ function startNextTrade(){
     );
 
     return;
+
   }
 
 
   if(tradeInProgress){
 
     return;
+
   }
 
 
@@ -1776,10 +1979,12 @@ function startNextTrade(){
 
     currentStake =
       maxStake;
+
   }
 
 
   requestProposal();
+
 }
 
 
@@ -1792,6 +1997,7 @@ async function startBot(){
   if(botRunning){
 
     return;
+
   }
 
 
@@ -1802,8 +2008,13 @@ async function startBot(){
     );
 
     return;
+
   }
 
+
+  /*
+    Verify selected account is DEMO.
+  */
 
   try{
 
@@ -1836,6 +2047,7 @@ async function startBot(){
       );
 
       return;
+
     }
 
 
@@ -1851,6 +2063,7 @@ async function startBot(){
       );
 
       return;
+
     }
 
 
@@ -1861,11 +2074,12 @@ async function startBot(){
     );
 
     return;
+
   }
 
 
   /*
-    Reset current session.
+    Reset session.
   */
 
   sessionPL =
@@ -1909,6 +2123,7 @@ async function startBot(){
   $("startBtn").disabled =
     true;
 
+
   $("stopBtn").disabled =
     false;
 
@@ -1920,24 +2135,35 @@ async function startBot(){
     "================================"
   );
 
+
   log(
     "NEW SESSION STARTED."
   );
+
 
   log(
     "Symbol: " +
     SYMBOL
   );
 
+
   log(
     "Contract: " +
     CONTRACT_TYPE
   );
 
+
+  log(
+    "Prediction Digit: " +
+    $("predictionDigit").value
+  );
+
+
   log(
     "Initial Stake: $" +
     currentStake.toFixed(2)
   );
+
 
   log(
     "Take Profit: $" +
@@ -1946,12 +2172,14 @@ async function startBot(){
     ).toFixed(2)
   );
 
+
   log(
     "Session Stop Loss: $" +
     Number(
       $("stopLoss").value
     ).toFixed(2)
   );
+
 
   log(
     "Recovery Multiplier: " +
@@ -1960,6 +2188,7 @@ async function startBot(){
     ).toFixed(2)
   );
 
+
   log(
     "Maximum Recovery Stake: $" +
     Number(
@@ -1967,14 +2196,14 @@ async function startBot(){
     ).toFixed(2)
   );
 
+
   log(
     "================================"
   );
 
 
   /*
-    Make sure the trading WebSocket
-    is available before trading.
+    Open WebSocket if needed.
   */
 
   if(
@@ -1984,6 +2213,7 @@ async function startBot(){
   ){
 
     await openTradingConnection();
+
   }
 
 
@@ -1997,11 +2227,13 @@ async function startBot(){
       ){
 
         startNextTrade();
+
       }
 
     },
     1200
   );
+
 }
 
 
@@ -2014,8 +2246,10 @@ function manualStop(){
   botRunning =
     false;
 
+
   tradeInProgress =
     false;
+
 
   recoveryMode =
     false;
@@ -2027,8 +2261,10 @@ function manualStop(){
       restartTimer
     );
 
+
     restartTimer =
       null;
+
   }
 
 
@@ -2038,6 +2274,7 @@ function manualStop(){
 
   $("startBtn").disabled =
     false;
+
 
   $("stopBtn").disabled =
     true;
@@ -2049,6 +2286,7 @@ function manualStop(){
 
 
   updateStats();
+
 }
 
 
@@ -2063,8 +2301,10 @@ function stopPermanently(
   botRunning =
     false;
 
+
   tradeInProgress =
     false;
+
 
   recoveryMode =
     false;
@@ -2076,8 +2316,10 @@ function stopPermanently(
       restartTimer
     );
 
+
     restartTimer =
       null;
+
   }
 
 
@@ -2088,6 +2330,7 @@ function stopPermanently(
   $("startBtn").disabled =
     false;
 
+
   $("stopBtn").disabled =
     true;
 
@@ -2096,17 +2339,21 @@ function stopPermanently(
     "================================"
   );
 
+
   log(
     "BOT STOPPED."
   );
+
 
   log(
     reason
   );
 
+
   log(
     "Press START for another session."
   );
+
 
   log(
     "================================"
@@ -2114,6 +2361,7 @@ function stopPermanently(
 
 
   updateStats();
+
 }
 
 
@@ -2124,21 +2372,23 @@ function stopPermanently(
 function automaticSessionReset(){
 
   /*
-    -$0.70 does NOT permanently stop
-    the bot.
+    The $0.70 session loss is NOT
+    a permanent bot shutdown.
 
     It closes the current session,
     waits 10 seconds,
     resets the session,
-    and starts a new session.
+    and automatically starts again.
   */
 
 
   botRunning =
     false;
 
+
   tradeInProgress =
     false;
+
 
   recoveryMode =
     false;
@@ -2152,22 +2402,27 @@ function automaticSessionReset(){
     "================================"
   );
 
+
   log(
     "SESSION HARD STOP REACHED."
   );
+
 
   log(
     "Session P/L: $" +
     sessionPL.toFixed(2)
   );
 
+
   log(
     "Current session closed."
   );
 
+
   log(
     "New session will start automatically in 10 seconds."
   );
+
 
   log(
     "================================"
@@ -2182,6 +2437,7 @@ function automaticSessionReset(){
     clearTimeout(
       restartTimer
     );
+
   }
 
 
@@ -2190,7 +2446,8 @@ function automaticSessionReset(){
       function(){
 
         /*
-          Reset session statistics.
+          Reset everything for
+          a completely new session.
         */
 
         sessionPL =
@@ -2224,7 +2481,8 @@ function automaticSessionReset(){
 
 
         /*
-          Verify WebSocket.
+          Connection must still
+          be available.
         */
 
         if(
@@ -2246,17 +2504,18 @@ function automaticSessionReset(){
           $("startBtn").disabled =
             false;
 
+
           $("stopBtn").disabled =
             true;
 
 
           return;
+
         }
 
 
         /*
-          Automatically start
-          the fresh session.
+          Start fresh session.
         */
 
         botRunning =
@@ -2270,6 +2529,7 @@ function automaticSessionReset(){
         $("startBtn").disabled =
           true;
 
+
         $("stopBtn").disabled =
           false;
 
@@ -2281,26 +2541,38 @@ function automaticSessionReset(){
           "================================"
         );
 
+
         log(
           "NEW SESSION STARTED AUTOMATICALLY."
         );
+
+
+        log(
+          "Prediction Digit: " +
+          $("predictionDigit").value
+        );
+
 
         log(
           "Initial Stake reset to $" +
           currentStake.toFixed(2)
         );
 
+
         log(
           "Session P/L reset to $0.00."
         );
+
 
         log(
           "Recovery mode OFF."
         );
 
+
         log(
           "Bot continuing automatically."
         );
+
 
         log(
           "================================"
@@ -2313,6 +2585,7 @@ function automaticSessionReset(){
       },
       10000
     );
+
 }
 
 
