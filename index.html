@@ -2,131 +2,150 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart Recovery Bot</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
       margin: 0;
       padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
     }
 
     .container {
-      max-width: 500px;
+      max-width: 600px;
       margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 15px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
     }
 
     h1 {
-      font-size: 24px;
+      text-align: center;
       margin-bottom: 5px;
     }
 
-    h2 {
-      font-size: 18px;
-      margin-top: 25px;
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 25px;
     }
 
-    label {
-      display: block;
-      margin-top: 15px;
+    .card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 15px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .label {
+      color: #94a3b8;
+    }
+
+    .value {
       font-weight: bold;
     }
 
-    select,
-    input {
+    input,
+    select {
       width: 100%;
-      box-sizing: border-box;
       padding: 12px;
       margin-top: 6px;
-      border: 1px solid #ccc;
+      margin-bottom: 12px;
+      border: 1px solid #475569;
       border-radius: 8px;
+      background: #0f172a;
+      color: white;
       font-size: 16px;
     }
 
     button {
       width: 100%;
-      padding: 13px;
-      margin-top: 12px;
-      border: none;
-      border-radius: 8px;
+      padding: 14px;
+      margin-top: 8px;
+      border: 0;
+      border-radius: 9px;
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: 0.6;
-    }
-
-    #connectBtn {
-      background: #222;
+    #loginBtn {
+      background: #2563eb;
       color: white;
     }
 
-    #tradingBtn {
-      background: #555;
+    #connectBtn {
+      background: #475569;
       color: white;
     }
 
     #startBtn {
-      background: #16803c;
+      background: #16a34a;
       color: white;
     }
 
     #stopBtn {
-      background: #c62828;
+      background: #dc2626;
       color: white;
     }
 
-    .card {
-      margin-top: 15px;
-      padding: 15px;
-      background: #f7f7f7;
-      border-radius: 10px;
-    }
-
-    .market-card {
-      margin-top: 15px;
-      padding: 15px;
-      background: #eef7ff;
-      border-radius: 10px;
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .status {
-      font-weight: bold;
+      padding: 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+      background: #0f172a;
     }
 
     .green {
-      color: green;
+      color: #22c55e;
     }
 
     .red {
-      color: red;
+      color: #ef4444;
+    }
+
+    .yellow {
+      color: #facc15;
+    }
+
+    .big-number {
+      font-size: 30px;
+      font-weight: bold;
+      text-align: center;
+      margin: 12px 0;
+    }
+
+    .digit {
+      font-size: 45px;
+      text-align: center;
+      font-weight: bold;
+      margin: 10px;
     }
 
     .warning {
-      margin-top: 15px;
+      background: #451a03;
+      border: 1px solid #92400e;
+      color: #fbbf24;
       padding: 12px;
-      background: #fff3cd;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .big-digit {
-      font-size: 42px;
-      font-weight: bold;
-      margin-top: 5px;
+      border-radius: 9px;
+      margin-bottom: 15px;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -136,700 +155,1003 @@
 <div class="container">
 
   <h1>Smart Recovery Bot</h1>
+  <div class="subtitle">Deriv Digit Trading Dashboard</div>
 
-  <p><strong>Deriv Digit Smart Recovery</strong></p>
-
-  <h2>Account</h2>
-
-  <select id="accountSelect">
-    <option value="">Select Account</option>
-  </select>
+  <div class="warning">
+    <b>DEMO TEST MODE</b><br>
+    Real-money trading is currently locked.
+    We will test the bot on the Deriv demo account first.
+  </div>
 
   <div class="card">
 
-    <div>
+    <h3>Deriv Connection</h3>
+
+    <button id="loginBtn">
+      CONNECT DERIV
+    </button>
+
+    <div class="status">
       Status:
-      <span id="status" class="status">
-        DISCONNECTED
-      </span>
-    </div>
-
-    <div style="margin-top:10px;">
-      Balance:
-      <strong id="balance">
-        $0.00
-      </strong>
-    </div>
-
-    <div style="margin-top:10px;">
-      Trading:
-      <span id="tradingStatus" class="status">
+      <span id="connectionStatus" class="yellow">
         NOT CONNECTED
       </span>
     </div>
 
-  </div>
+    <label>Trading Account</label>
 
-  <h2>Live Market</h2>
+    <select id="accountSelect" disabled>
+      <option value="">Connect Deriv first</option>
+    </select>
 
-  <div class="market-card">
-
-    <div>
-      Symbol:
-      <strong id="symbol">
-        R_25
-      </strong>
-    </div>
-
-    <div style="margin-top:10px;">
-      Live Tick:
-      <strong id="latestTick">
-        Waiting...
-      </strong>
-    </div>
-
-    <div style="margin-top:10px;">
-      Last Digit:
-    </div>
-
-    <div
-      id="lastDigit"
-      class="big-digit"
-    >
-      -
-    </div>
-
-    <div
-      id="tickStatus"
-      style="margin-top:8px;"
-    >
-      Waiting for live tick...
-    </div>
+    <button id="connectBtn" disabled>
+      CONNECT TRADING
+    </button>
 
   </div>
 
-  <h2>Bot Settings</h2>
-
-  <label for="stake">
-    Initial Stake ($)
-  </label>
-
-  <input
-    id="stake"
-    type="number"
-    step="0.01"
-    value="0.10"
-  >
-
-  <label for="takeProfit">
-    Take Profit ($)
-  </label>
-
-  <input
-    id="takeProfit"
-    type="number"
-    step="0.01"
-    value="0.04"
-  >
-
-  <label for="stopLoss">
-    Stop Loss ($)
-  </label>
-
-  <input
-    id="stopLoss"
-    type="number"
-    step="0.01"
-    value="0.15"
-  >
-
-  <label for="multiplier">
-    Martingale Multiplier
-  </label>
-
-  <input
-    id="multiplier"
-    type="number"
-    step="0.01"
-    value="1.00"
-  >
-
-  <button
-    id="connectBtn"
-    onclick="connectDeriv()"
-  >
-    CONNECT DERIV
-  </button>
-
-  <button
-    id="tradingBtn"
-    onclick="connectTrading()"
-  >
-    CONNECT TRADING
-  </button>
-
-  <button
-    id="startBtn"
-    onclick="startBot()"
-  >
-    START BOT
-  </button>
-
-  <button
-    id="stopBtn"
-    onclick="stopBot()"
-  >
-    STOP BOT
-  </button>
-
-  <div class="warning">
-    DEMO TEST MODE: Live market data is being tested.
-    No trade is placed by this version.
-  </div>
-
-  <h2>Bot Statistics</h2>
 
   <div class="card">
 
-    <div>
-      Profit/Loss:
-      <strong id="profitLoss">
-        $0.00
-      </strong>
+    <h3>Account</h3>
+
+    <div class="row">
+      <span class="label">Balance</span>
+      <span id="balance" class="value">$0.00</span>
     </div>
 
-    <div style="margin-top:10px;">
+    <div class="row">
+      <span class="label">Trading</span>
+      <span id="tradingStatus" class="value yellow">
+        DISCONNECTED
+      </span>
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>Live Market</h3>
+
+    <div class="row">
+      <span class="label">Symbol</span>
+      <span class="value">R_25</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Live Tick</span>
+      <span id="liveTick" class="value">
+        Waiting...
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">Last Digit</span>
+      <span id="lastDigit" class="digit">
+        -
+      </span>
+    </div>
+
+    <div class="status">
+      Market:
+      <span id="marketStatus" class="yellow">
+        WAITING
+      </span>
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>Digit Contract Check</h3>
+
+    <div class="row">
+      <span class="label">Digit Contracts</span>
+      <span id="contractStatus" class="yellow">
+        CHECKING...
+      </span>
+    </div>
+
+    <div class="row">
+      <span class="label">Digit Diff</span>
+      <span id="digitDiffStatus" class="yellow">
+        -
+      </span>
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>Bot Settings</h3>
+
+    <label>Initial Stake (USD)</label>
+    <input
+      id="initialStake"
+      type="number"
+      step="0.01"
+      min="0.01"
+      value="0.10"
+    >
+
+    <label>Take Profit (USD)</label>
+    <input
+      id="takeProfit"
+      type="number"
+      step="0.01"
+      min="0.01"
+      value="0.04"
+    >
+
+    <label>Stop Loss (USD)</label>
+    <input
+      id="stopLoss"
+      type="number"
+      step="0.01"
+      min="0.01"
+      value="0.15"
+    >
+
+    <label>Martingale Multiplier</label>
+    <input
+      id="multiplier"
+      type="number"
+      step="0.01"
+      min="1"
+      value="1.00"
+    >
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>Bot Control</h3>
+
+    <button id="startBtn" disabled>
+      START BOT
+    </button>
+
+    <button id="stopBtn">
+      STOP BOT
+    </button>
+
+    <div class="status">
       Bot:
-      <strong id="botStatus">
+      <span id="botStatus" class="yellow">
         STOPPED
-      </strong>
+      </span>
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <h3>Session Statistics</h3>
+
+    <div class="row">
+      <span class="label">Starting Balance</span>
+      <span id="startingBalance">$0.00</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Current Balance</span>
+      <span id="currentBalance">$0.00</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Session P/L</span>
+      <span id="sessionPL">$0.00</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Wins</span>
+      <span id="wins">0</span>
+    </div>
+
+    <div class="row">
+      <span class="label">Losses</span>
+      <span id="losses">0</span>
     </div>
 
   </div>
 
 </div>
 
+
 <script>
 
 const API =
   "https://smart-recovery-bot.onrender.com";
 
-let connectedAccounts = [];
+let accounts = [];
+let selectedAccount = null;
+let socket = null;
 
-let selectedAccountId = "";
+let connected = false;
+let marketReady = false;
+let digitContractsAvailable = false;
 
-let tickTimer = null;
+let startingBalance = 0;
+let currentBalance = 0;
+
+let wins = 0;
+let losses = 0;
+
+let botRunning = false;
 
 
-// ======================================
-// LOAD ACCOUNT DATA
-// ======================================
+const loginBtn =
+  document.getElementById("loginBtn");
+
+const accountSelect =
+  document.getElementById("accountSelect");
+
+const connectBtn =
+  document.getElementById("connectBtn");
+
+const startBtn =
+  document.getElementById("startBtn");
+
+const stopBtn =
+  document.getElementById("stopBtn");
+
+
+function setText(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+
+function money(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return "$0.00";
+  }
+
+  return "$" + number.toFixed(2);
+}
+
+
+/*
+  CONNECT DERIV
+*/
+
+loginBtn.addEventListener("click", () => {
+
+  window.location.href =
+    API + "/login";
+
+});
+
+
+/*
+  CHECK LOGIN STATUS
+*/
 
 async function loadAccounts() {
 
   try {
 
     const response =
-      await fetch(
-        API + "/api/balance"
-      );
-
-    const data =
-      await response.json();
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.error ||
-        "Unable to load account data."
-      );
-
-    }
-
-    connectedAccounts =
-      data.accounts || [];
-
-    const select =
-      document.getElementById(
-        "accountSelect"
-      );
-
-    select.innerHTML =
-      '<option value="">Select Account</option>';
-
-    connectedAccounts.forEach(
-      account => {
-
-        const option =
-          document.createElement(
-            "option"
-          );
-
-        option.value =
-          account.account_id;
-
-        option.textContent =
-          `${account.account_type.toUpperCase()} — $${account.balance}`;
-
-        select.appendChild(option);
-
-      }
-    );
-
-    document.getElementById(
-      "status"
-    ).textContent =
-      "CONNECTED";
-
-    document.getElementById(
-      "status"
-    ).className =
-      "status green";
-
-    updateBalance();
-
-  } catch (error) {
-
-    console.error(error);
-
-    document.getElementById(
-      "status"
-    ).textContent =
-      "DISCONNECTED";
-
-    document.getElementById(
-      "status"
-    ).className =
-      "status red";
-
-  }
-
-}
-
-
-// ======================================
-// UPDATE BALANCE
-// ======================================
-
-function updateBalance() {
-
-  const accountId =
-    document.getElementById(
-      "accountSelect"
-    ).value;
-
-  selectedAccountId =
-    accountId;
-
-  const account =
-    connectedAccounts.find(
-      item =>
-        item.account_id === accountId
-    );
-
-  if (!account) {
-
-    document.getElementById(
-      "balance"
-    ).textContent =
-      "$0.00";
-
-    return;
-
-  }
-
-  document.getElementById(
-    "balance"
-  ).textContent =
-    `$${account.balance}`;
-
-}
-
-
-// ======================================
-// ACCOUNT CHANGED
-// ======================================
-
-document
-  .getElementById("accountSelect")
-  .addEventListener(
-    "change",
-    () => {
-
-      updateBalance();
-
-      document.getElementById(
-        "tradingStatus"
-      ).textContent =
-        "NOT CONNECTED";
-
-      document.getElementById(
-        "tradingStatus"
-      ).className =
-        "status";
-
-      document.getElementById(
-        "latestTick"
-      ).textContent =
-        "Waiting...";
-
-      document.getElementById(
-        "lastDigit"
-      ).textContent =
-        "-";
-
-      document.getElementById(
-        "tickStatus"
-      ).textContent =
-        "Waiting for trading connection...";
-
-    }
-  );
-
-
-// ======================================
-// CONNECT DERIV
-// ======================================
-
-function connectDeriv() {
-
-  window.location.href =
-    API + "/login";
-
-}
-
-
-// ======================================
-// CONNECT TRADING
-// ======================================
-
-async function connectTrading() {
-
-  const accountId =
-    document.getElementById(
-      "accountSelect"
-    ).value;
-
-  if (!accountId) {
-
-    alert(
-      "Please select an account first."
-    );
-
-    return;
-
-  }
-
-  const account =
-    connectedAccounts.find(
-      item =>
-        item.account_id === accountId
-    );
-
-  if (!account) {
-
-    alert(
-      "Selected account was not found."
-    );
-
-    return;
-
-  }
-
-  const button =
-    document.getElementById(
-      "tradingBtn"
-    );
-
-  button.disabled = true;
-
-  button.textContent =
-    "CONNECTING...";
-
-  try {
-
-    const response =
-      await fetch(
-        API + "/api/connect-trading",
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            account_id:
-              accountId
-          })
-        }
-      );
-
-    const data =
-      await response.json();
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.error ||
-        "Trading connection failed."
-      );
-
-    }
-
-    document.getElementById(
-      "tradingStatus"
-    ).textContent =
-      "READY";
-
-    document.getElementById(
-      "tradingStatus"
-    ).className =
-      "status green";
-
-    document.getElementById(
-      "tickStatus"
-    ).textContent =
-      "Connected. Waiting for live tick...";
-
-    alert(
-      "Trading connection is ready. No trade was placed."
-    );
-
-    startTickPolling(accountId);
-
-  } catch (error) {
-
-    console.error(error);
-
-    document.getElementById(
-      "tradingStatus"
-    ).textContent =
-      "FAILED";
-
-    document.getElementById(
-      "tradingStatus"
-    ).className =
-      "status red";
-
-    alert(
-      error.message
-    );
-
-  } finally {
-
-    button.disabled = false;
-
-    button.textContent =
-      "CONNECT TRADING";
-
-  }
-
-}
-
-
-// ======================================
-// LIVE TICK POLLING
-// ======================================
-
-function startTickPolling(accountId) {
-
-  if (tickTimer) {
-    clearInterval(tickTimer);
-  }
-
-  getLiveTick(accountId);
-
-  tickTimer =
-    setInterval(
-      () => {
-        getLiveTick(accountId);
-      },
-      1000
-    );
-
-}
-
-
-// ======================================
-// GET LIVE TICK
-// ======================================
-
-async function getLiveTick(accountId) {
-
-  try {
-
-    const response =
-      await fetch(
-        API +
-        "/api/tick?account_id=" +
-        encodeURIComponent(accountId)
-      );
-
-    const data =
-      await response.json();
+      await fetch(API + "/api/balance");
 
     if (!response.ok) {
       return;
     }
 
-    if (
-      data.latest_tick !== null &&
-      data.latest_tick !== undefined
-    ) {
+    const data =
+      await response.json();
 
-      document.getElementById(
-        "latestTick"
-      ).textContent =
-        data.latest_tick;
+    accounts =
+      data.accounts || [];
 
-      if (
-        data.last_digit !== null &&
-        data.last_digit !== undefined
-      ) {
+    accountSelect.innerHTML = "";
 
-        document.getElementById(
-          "lastDigit"
-        ).textContent =
-          data.last_digit;
+    accounts.forEach(account => {
 
-        document.getElementById(
-          "tickStatus"
-        ).textContent =
-          "LIVE";
+      const option =
+        document.createElement("option");
 
-        document.getElementById(
-          "tickStatus"
-        ).className =
-          "green";
+      option.value =
+        account.account_id;
 
-      }
+      const type =
+        String(
+          account.account_type || ""
+        ).toUpperCase();
 
-    }
+      const balance =
+        Number(
+          account.balance ??
+          account.balance?.balance ??
+          0
+        );
 
-    if (
-      data.balance !== null &&
-      data.balance !== undefined
-    ) {
+      option.textContent =
+        `${type} - ${account.account_id} - ${money(balance)}`;
 
-      document.getElementById(
-        "balance"
-      ).textContent =
-        "$" + data.balance;
+      accountSelect.appendChild(option);
 
-    }
+    });
 
-    if (data.error) {
+    if (accounts.length > 0) {
 
-      document.getElementById(
-        "tickStatus"
-      ).textContent =
-        data.error;
+      accountSelect.disabled = false;
+      connectBtn.disabled = false;
 
-      document.getElementById(
-        "tickStatus"
-      ).className =
-        "red";
+      setText(
+        "connectionStatus",
+        "CONNECTED"
+      );
+
+      document
+        .getElementById("connectionStatus")
+        .className = "green";
 
     }
 
   } catch (error) {
 
-    console.error(
-      "Tick error:",
-      error
-    );
+    console.error(error);
 
   }
 
 }
 
 
-// ======================================
-// START BOT
-// ======================================
+/*
+  ACCOUNT SELECTION
+*/
 
-function startBot() {
+accountSelect.addEventListener(
+  "change",
+  () => {
 
-  const accountId =
-    document.getElementById(
-      "accountSelect"
-    ).value;
-
-  if (!accountId) {
-
-    alert(
-      "Please select an account first."
-    );
-
-    return;
+    selectedAccount =
+      accounts.find(
+        account =>
+          account.account_id ===
+          accountSelect.value
+      );
 
   }
+);
 
-  const tradingStatus =
-    document.getElementById(
-      "tradingStatus"
-    ).textContent;
+
+/*
+  CONNECT TRADING
+*/
+
+connectBtn.addEventListener(
+  "click",
+  async () => {
+
+    if (!selectedAccount) {
+
+      alert(
+        "Select a trading account first."
+      );
+
+      return;
+    }
+
+
+    /*
+      HARD DEMO LOCK
+    */
+
+    if (
+      String(
+        selectedAccount.account_type
+      ).toLowerCase() !== "demo"
+    ) {
+
+      alert(
+        "DEMO TEST MODE: Select your DEMO account."
+      );
+
+      return;
+    }
+
+
+    connectBtn.disabled = true;
+
+    setText(
+      "tradingStatus",
+      "CONNECTING..."
+    );
+
+
+    try {
+
+      const response =
+        await fetch(
+          API + "/api/trading-url",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body: JSON.stringify({
+              account_id:
+                selectedAccount.account_id
+            })
+          }
+        );
+
+
+      const data =
+        await response.json();
+
+
+      if (!response.ok) {
+
+        throw new Error(
+          data.error ||
+          "Unable to connect trading."
+        );
+
+      }
+
+
+      /*
+        IMPORTANT:
+        Connect DIRECTLY to Deriv.
+
+        Do NOT save the OTP URL.
+      */
+
+      socket =
+        new WebSocket(
+          data.websocket_url
+        );
+
+
+      socket.onopen = () => {
+
+        connected = true;
+
+        setText(
+          "tradingStatus",
+          "READY"
+        );
+
+        document
+          .getElementById(
+            "tradingStatus"
+          )
+          .className = "green";
+
+
+        /*
+          Balance
+        */
+
+        socket.send(
+          JSON.stringify({
+            balance: 1,
+            subscribe: 1
+          })
+        );
+
+
+        /*
+          Active symbols
+        */
+
+        socket.send(
+          JSON.stringify({
+            active_symbols: "brief"
+          })
+        );
+
+
+        /*
+          R_25 ticks
+        */
+
+        socket.send(
+          JSON.stringify({
+            ticks: "R_25",
+            subscribe: 1
+          })
+        );
+
+
+        /*
+          Check available contracts
+        */
+
+        socket.send(
+          JSON.stringify({
+            contracts_for: "R_25"
+          })
+        );
+
+
+        setText(
+          "marketStatus",
+          "LIVE"
+        );
+
+        document
+          .getElementById(
+            "marketStatus"
+          )
+          .className = "green";
+
+      };
+
+
+      socket.onmessage = event => {
+
+        try {
+
+          const message =
+            JSON.parse(event.data);
+
+
+          /*
+            BALANCE
+          */
+
+          if (
+            message.msg_type ===
+            "balance"
+          ) {
+
+            const rawBalance =
+              message.balance?.balance;
+
+            const numericBalance =
+              Number(rawBalance);
+
+            if (
+              Number.isFinite(
+                numericBalance
+              )
+            ) {
+
+              currentBalance =
+                numericBalance;
+
+              if (
+                startingBalance === 0
+              ) {
+
+                startingBalance =
+                  numericBalance;
+
+                setText(
+                  "startingBalance",
+                  money(
+                    startingBalance
+                  )
+                );
+
+              }
+
+              setText(
+                "balance",
+                money(
+                  numericBalance
+                )
+              );
+
+              setText(
+                "currentBalance",
+                money(
+                  numericBalance
+                )
+              );
+
+              updatePL();
+
+            }
+
+          }
+
+
+          /*
+            LIVE TICK
+          */
+
+          if (
+            message.msg_type ===
+            "tick"
+          ) {
+
+            const quote =
+              Number(
+                message.tick?.quote
+              );
+
+            if (
+              Number.isFinite(quote)
+            ) {
+
+              const tickText =
+                quote.toFixed(3);
+
+              setText(
+                "liveTick",
+                tickText
+              );
+
+
+              /*
+                Last digit
+              */
+
+              const digit =
+                tickText
+                  .replace(
+                    /[^0-9]/g,
+                    ""
+                  )
+                  .slice(-1);
+
+
+              setText(
+                "lastDigit",
+                digit
+              );
+
+              marketReady = true;
+
+            }
+
+          }
+
+
+          /*
+            CONTRACTS FOR
+          */
+
+          if (
+            message.msg_type ===
+            "contracts_for"
+          ) {
+
+            const contracts =
+              message.contracts_for
+                ?.available || [];
+
+
+            const digitTypes = [
+              "DIGITDIFF",
+              "DIGITMATCH",
+              "DIGITOVER",
+              "DIGITUNDER",
+              "DIGITEVEN",
+              "DIGITODD"
+            ];
+
+
+            const found =
+              contracts.filter(
+                contract =>
+                  digitTypes.includes(
+                    String(
+                      contract.contract_type
+                    ).toUpperCase()
+                  )
+              );
+
+
+            digitContractsAvailable =
+              found.length > 0;
+
+
+            if (
+              digitContractsAvailable
+            ) {
+
+              setText(
+                "contractStatus",
+                "AVAILABLE"
+              );
+
+              document
+                .getElementById(
+                  "contractStatus"
+                )
+                .className = "green";
+
+            } else {
+
+              setText(
+                "contractStatus",
+                "NOT AVAILABLE"
+              );
+
+              document
+                .getElementById(
+                  "contractStatus"
+                )
+                .className = "red";
+
+            }
+
+
+            const diff =
+              found.find(
+                contract =>
+                  String(
+                    contract.contract_type
+                  ).toUpperCase() ===
+                  "DIGITDIFF"
+              );
+
+
+            if (diff) {
+
+              setText(
+                "digitDiffStatus",
+                "AVAILABLE"
+              );
+
+              document
+                .getElementById(
+                  "digitDiffStatus"
+                )
+                .className = "green";
+
+            } else {
+
+              setText(
+                "digitDiffStatus",
+                "NOT FOUND"
+              );
+
+              document
+                .getElementById(
+                  "digitDiffStatus"
+                )
+                .className = "red";
+
+            }
+
+
+            updateStartButton();
+
+          }
+
+        } catch (error) {
+
+          console.error(
+            "Message error:",
+            error
+          );
+
+        }
+
+      };
+
+
+      socket.onerror = error => {
+
+        console.error(
+          "Trading WebSocket error:",
+          error
+        );
+
+        setText(
+          "tradingStatus",
+          "ERROR"
+        );
+
+        document
+          .getElementById(
+            "tradingStatus"
+          )
+          .className = "red";
+
+      };
+
+
+      socket.onclose = () => {
+
+        connected = false;
+
+        setText(
+          "tradingStatus",
+          "DISCONNECTED"
+        );
+
+        document
+          .getElementById(
+            "tradingStatus"
+          )
+          .className = "red";
+
+        startBtn.disabled = true;
+
+      };
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      alert(
+        error.message
+      );
+
+      connectBtn.disabled = false;
+
+      setText(
+        "tradingStatus",
+        "ERROR"
+      );
+
+    }
+
+  }
+);
+
+
+/*
+  START BUTTON
+*/
+
+function updateStartButton() {
+
+  /*
+    We require:
+
+    1. Trading connected
+    2. Market receiving ticks
+    3. Digit contracts available
+    4. Demo account
+  */
 
   if (
-    tradingStatus !==
-    "READY"
+    connected &&
+    marketReady &&
+    digitContractsAvailable &&
+    selectedAccount &&
+    String(
+      selectedAccount.account_type
+    ).toLowerCase() === "demo"
   ) {
 
+    startBtn.disabled = false;
+
+  } else {
+
+    startBtn.disabled = true;
+
+  }
+
+}
+
+
+startBtn.addEventListener(
+  "click",
+  () => {
+
+    /*
+      IMPORTANT:
+      The actual trade execution is
+      intentionally NOT enabled yet.
+    */
+
     alert(
-      "Connect trading first."
+      "Demo connection is ready. Trade execution will be enabled after the Digit contract/proposal test is verified."
     );
 
-    return;
+  }
+);
+
+
+/*
+  STOP BUTTON
+*/
+
+stopBtn.addEventListener(
+  "click",
+  () => {
+
+    botRunning = false;
+
+    setText(
+      "botStatus",
+      "STOPPED"
+    );
+
+    document
+      .getElementById(
+        "botStatus"
+      )
+      .className = "red";
 
   }
+);
 
-  alert(
-    "The live-digit test is active. No trade is placed yet."
+
+/*
+  SESSION P/L
+*/
+
+function updatePL() {
+
+  const pl =
+    currentBalance -
+    startingBalance;
+
+
+  setText(
+    "sessionPL",
+    money(pl)
   );
+
+
+  if (pl >= 0) {
+
+    document
+      .getElementById(
+        "sessionPL"
+      )
+      .className = "green";
+
+  } else {
+
+    document
+      .getElementById(
+        "sessionPL"
+      )
+      .className = "red";
+
+  }
 
 }
 
 
-// ======================================
-// STOP BOT
-// ======================================
+/*
+  INITIAL STATUS CHECK
+*/
 
-function stopBot() {
+async function init() {
 
-  if (tickTimer) {
+  try {
 
-    clearInterval(
-      tickTimer
-    );
+    const response =
+      await fetch(
+        API + "/api/status"
+      );
 
-    tickTimer = null;
+    const data =
+      await response.json();
+
+
+    if (
+      data.connected &&
+      data.accounts > 0
+    ) {
+
+      await loadAccounts();
+
+    }
+
+  } catch (error) {
+
+    console.error(error);
 
   }
-
-  document.getElementById(
-    "botStatus"
-  ).textContent =
-    "STOPPED";
-
-  document.getElementById(
-    "tickStatus"
-  ).textContent =
-    "Tick monitoring stopped.";
-
-  alert(
-    "Bot stopped."
-  );
 
 }
 
 
-// ======================================
-// INITIAL LOAD
-// ======================================
-
-loadAccounts();
+init();
 
 </script>
 
