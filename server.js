@@ -2,6 +2,12 @@ const express = require("express");
 const crypto = require("crypto");
 
 const app = express();
+
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
 const PORT = process.env.PORT || 3000;
 
 const CLIENT_ID = "34hOtWPGhXtUBtGqORxGB";
