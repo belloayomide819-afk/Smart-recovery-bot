@@ -65,6 +65,10 @@
       cursor: pointer;
     }
 
+    button:disabled {
+      opacity: 0.6;
+    }
+
     #connectBtn {
       background: #222;
       color: white;
@@ -92,6 +96,13 @@
       border-radius: 10px;
     }
 
+    .market-card {
+      margin-top: 15px;
+      padding: 15px;
+      background: #eef7ff;
+      border-radius: 10px;
+    }
+
     .status {
       font-weight: bold;
     }
@@ -110,6 +121,12 @@
       background: #fff3cd;
       border-radius: 8px;
       font-size: 14px;
+    }
+
+    .big-digit {
+      font-size: 42px;
+      font-weight: bold;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -149,6 +166,44 @@
       <span id="tradingStatus" class="status">
         NOT CONNECTED
       </span>
+    </div>
+
+  </div>
+
+  <h2>Live Market</h2>
+
+  <div class="market-card">
+
+    <div>
+      Symbol:
+      <strong id="symbol">
+        R_25
+      </strong>
+    </div>
+
+    <div style="margin-top:10px;">
+      Live Tick:
+      <strong id="latestTick">
+        Waiting...
+      </strong>
+    </div>
+
+    <div style="margin-top:10px;">
+      Last Digit:
+    </div>
+
+    <div
+      id="lastDigit"
+      class="big-digit"
+    >
+      -
+    </div>
+
+    <div
+      id="tickStatus"
+      style="margin-top:8px;"
+    >
+      Waiting for live tick...
     </div>
 
   </div>
@@ -228,8 +283,8 @@
   </button>
 
   <div class="warning">
-    DEMO TEST MODE: The bot will not place a trade until the
-    trading engine is explicitly enabled.
+    DEMO TEST MODE: Live market data is being tested.
+    No trade is placed by this version.
   </div>
 
   <h2>Bot Statistics</h2>
@@ -261,6 +316,10 @@ const API =
 
 let connectedAccounts = [];
 
+let selectedAccountId = "";
+
+let tickTimer = null;
+
 
 // ======================================
 // LOAD ACCOUNT DATA
@@ -271,7 +330,9 @@ async function loadAccounts() {
   try {
 
     const response =
-      await fetch(API + "/api/balance");
+      await fetch(
+        API + "/api/balance"
+      );
 
     const data =
       await response.json();
@@ -357,6 +418,9 @@ function updateBalance() {
       "accountSelect"
     ).value;
 
+  selectedAccountId =
+    accountId;
+
   const account =
     connectedAccounts.find(
       item =>
@@ -390,7 +454,36 @@ document
   .getElementById("accountSelect")
   .addEventListener(
     "change",
-    updateBalance
+    () => {
+
+      updateBalance();
+
+      document.getElementById(
+        "tradingStatus"
+      ).textContent =
+        "NOT CONNECTED";
+
+      document.getElementById(
+        "tradingStatus"
+      ).className =
+        "status";
+
+      document.getElementById(
+        "latestTick"
+      ).textContent =
+        "Waiting...";
+
+      document.getElementById(
+        "lastDigit"
+      ).textContent =
+        "-";
+
+      document.getElementById(
+        "tickStatus"
+      ).textContent =
+        "Waiting for trading connection...";
+
+    }
   );
 
 
@@ -421,6 +514,22 @@ async function connectTrading() {
 
     alert(
       "Please select an account first."
+    );
+
+    return;
+
+  }
+
+  const account =
+    connectedAccounts.find(
+      item =>
+        item.account_id === accountId
+    );
+
+  if (!account) {
+
+    alert(
+      "Selected account was not found."
     );
 
     return;
@@ -479,9 +588,16 @@ async function connectTrading() {
     ).className =
       "status green";
 
+    document.getElementById(
+      "tickStatus"
+    ).textContent =
+      "Connected. Waiting for live tick...";
+
     alert(
       "Trading connection is ready. No trade was placed."
     );
+
+    startTickPolling(accountId);
 
   } catch (error) {
 
@@ -514,6 +630,123 @@ async function connectTrading() {
 
 
 // ======================================
+// LIVE TICK POLLING
+// ======================================
+
+function startTickPolling(accountId) {
+
+  if (tickTimer) {
+    clearInterval(tickTimer);
+  }
+
+  getLiveTick(accountId);
+
+  tickTimer =
+    setInterval(
+      () => {
+        getLiveTick(accountId);
+      },
+      1000
+    );
+
+}
+
+
+// ======================================
+// GET LIVE TICK
+// ======================================
+
+async function getLiveTick(accountId) {
+
+  try {
+
+    const response =
+      await fetch(
+        API +
+        "/api/tick?account_id=" +
+        encodeURIComponent(accountId)
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      return;
+    }
+
+    if (
+      data.latest_tick !== null &&
+      data.latest_tick !== undefined
+    ) {
+
+      document.getElementById(
+        "latestTick"
+      ).textContent =
+        data.latest_tick;
+
+      if (
+        data.last_digit !== null &&
+        data.last_digit !== undefined
+      ) {
+
+        document.getElementById(
+          "lastDigit"
+        ).textContent =
+          data.last_digit;
+
+        document.getElementById(
+          "tickStatus"
+        ).textContent =
+          "LIVE";
+
+        document.getElementById(
+          "tickStatus"
+        ).className =
+          "green";
+
+      }
+
+    }
+
+    if (
+      data.balance !== null &&
+      data.balance !== undefined
+    ) {
+
+      document.getElementById(
+        "balance"
+      ).textContent =
+        "$" + data.balance;
+
+    }
+
+    if (data.error) {
+
+      document.getElementById(
+        "tickStatus"
+      ).textContent =
+        data.error;
+
+      document.getElementById(
+        "tickStatus"
+      ).className =
+        "red";
+
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Tick error:",
+      error
+    );
+
+  }
+
+}
+
+
+// ======================================
 // START BOT
 // ======================================
 
@@ -534,47 +767,18 @@ function startBot() {
 
   }
 
-  const stake =
-    parseFloat(
-      document.getElementById(
-        "stake"
-      ).value
-    );
-
-  const takeProfit =
-    parseFloat(
-      document.getElementById(
-        "takeProfit"
-      ).value
-    );
-
-  const stopLoss =
-    parseFloat(
-      document.getElementById(
-        "stopLoss"
-      ).value
-    );
-
-  const multiplier =
-    parseFloat(
-      document.getElementById(
-        "multiplier"
-      ).value
-    );
+  const tradingStatus =
+    document.getElementById(
+      "tradingStatus"
+    ).textContent;
 
   if (
-    !stake ||
-    stake <= 0 ||
-    !takeProfit ||
-    takeProfit <= 0 ||
-    !stopLoss ||
-    stopLoss <= 0 ||
-    !multiplier ||
-    multiplier <= 0
+    tradingStatus !==
+    "READY"
   ) {
 
     alert(
-      "Please enter valid bot settings."
+      "Connect trading first."
     );
 
     return;
@@ -582,7 +786,7 @@ function startBot() {
   }
 
   alert(
-    "Trading engine is not enabled yet. No trade was placed."
+    "The live-digit test is active. No trade is placed yet."
   );
 
 }
@@ -594,10 +798,25 @@ function startBot() {
 
 function stopBot() {
 
+  if (tickTimer) {
+
+    clearInterval(
+      tickTimer
+    );
+
+    tickTimer = null;
+
+  }
+
   document.getElementById(
     "botStatus"
   ).textContent =
     "STOPPED";
+
+  document.getElementById(
+    "tickStatus"
+  ).textContent =
+    "Tick monitoring stopped.";
 
   alert(
     "Bot stopped."
