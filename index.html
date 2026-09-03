@@ -148,6 +148,11 @@
       font-size: 13px;
       line-height: 1.5;
     }
+
+    .fixed {
+      opacity: 0.7;
+      pointer-events: none;
+    }
   </style>
 </head>
 
@@ -214,7 +219,7 @@
     <input
       id="takeProfit"
       type="number"
-      value="0.04"
+      value="1.00"
       min="0.01"
       step="0.01"
     >
@@ -222,24 +227,6 @@
     <label>Session Stop Loss (USD)</label>
     <input
       id="stopLoss"
-      type="number"
-      value="0.70"
-      min="0.35"
-      step="0.01"
-    >
-
-    <label>Recovery Multiplier</label>
-    <input
-      id="multiplier"
-      type="number"
-      value="1.5"
-      min="1"
-      step="0.1"
-    >
-
-    <label>Maximum Recovery Stake (USD)</label>
-    <input
-      id="maxRecovery"
       type="number"
       value="0.70"
       min="0.35"
@@ -273,8 +260,11 @@
     </button>
 
     <p class="warning">
-      DEMO ONLY. Real-account trading is disabled by this dashboard.
-      Recovery is limited by the session stop-loss and maximum recovery stake.
+      DEMO ONLY. Real-account trading is disabled.
+      No recovery or Martingale is used.
+      Every trade uses the same initial stake.
+      The bot stops automatically when Take Profit
+      or Session Stop Loss is reached.
     </p>
 
   </div>
@@ -303,14 +293,12 @@ let ws = null;
 let sessionPL = 0;
 let tradeCount = 0;
 
-let currentStake = MIN_STAKE;
-let recoveryMode = false;
-
 let config = {};
 
 let connectionCheckTimer = null;
-
 let waitingForResult = false;
+let proposalTimeout = null;
+let contractTimeout = null;
 
 
 /* ELEMENTS */
@@ -408,9 +396,7 @@ async function checkConnection() {
     if (data.connected) {
 
       if (!connected) {
-
         log("Deriv account connected.");
-
       }
 
       connected = true;
@@ -441,11 +427,6 @@ async function checkConnection() {
     }
 
   } catch (error) {
-
-    /*
-      Do not spam the log every few seconds.
-      Only show backend errors when needed.
-    */
 
     if (!connected) {
 
@@ -480,7 +461,6 @@ async function loadBalance() {
       !response.ok ||
       !data.accounts
     ) {
-
       return;
     }
 
@@ -493,7 +473,6 @@ async function loadBalance() {
       );
 
     if (!demoAccount) {
-
       return;
     }
 
@@ -509,7 +488,7 @@ async function loadBalance() {
 
   } catch (error) {
 
-    /* Ignore balance polling errors. */
+    /* Ignore balance errors. */
   }
 }
 
@@ -536,20 +515,6 @@ function getConfig() {
     Number(
       document.getElementById(
         "stopLoss"
-      ).value
-    );
-
-  const multiplier =
-    Number(
-      document.getElementById(
-        "multiplier"
-      ).value
-    );
-
-  const maxRecovery =
-    Number(
-      document.getElementById(
-        "maxRecovery"
       ).value
     );
 
@@ -601,35 +566,9 @@ function getConfig() {
 
 
   if (
-    !Number.isFinite(multiplier) ||
-    multiplier < 1
-  ) {
-
-    alert(
-      "Recovery multiplier must be at least 1."
-    );
-
-    return null;
-  }
-
-
-  if (
-    !Number.isFinite(maxRecovery) ||
-    maxRecovery < MIN_STAKE
-  ) {
-
-    alert(
-      "Maximum recovery stake must be at least $0.35."
-    );
-
-    return null;
-  }
-
-
-  if (
+    !Number.isInteger(prediction) ||
     prediction < 0 ||
-    prediction > 9 ||
-    !Number.isInteger(prediction)
+    prediction > 9
   ) {
 
     alert(
@@ -644,8 +583,6 @@ function getConfig() {
     initialStake,
     takeProfit,
     stopLoss,
-    multiplier,
-    maxRecovery,
     prediction
   };
 }
@@ -739,12 +676,27 @@ async function getTradingURL(accountId) {
 }
 
 
+/* CLEAR TIMEOUTS */
+
+function clearTradeTimeouts() {
+
+  if (proposalTimeout) {
+    clearTimeout(proposalTimeout);
+    proposalTimeout = null;
+  }
+
+  if (contractTimeout) {
+    clearTimeout(contractTimeout);
+    contractTimeout = null;
+  }
+}
+
+
 /* START BOT */
 
 async function startBot() {
 
   if (running) {
-
     return;
   }
 
@@ -752,7 +704,6 @@ async function startBot() {
     getConfig();
 
   if (!config) {
-
     return;
   }
 
@@ -800,26 +751,17 @@ async function startBot() {
       waitingForResult = false;
 
       sessionPL = 0;
-
       tradeCount = 0;
-
-      currentStake =
-        config.initialStake;
-
-      recoveryMode = false;
 
       updateStats();
 
       startBtn.disabled = true;
-
       stopBtn.disabled = false;
 
-      log(
-        "BOT STARTED."
-      );
+      log("BOT STARTED.");
 
       log(
-        "Stake: $" +
+        "Fixed Stake: $" +
         money(config.initialStake)
       );
 
@@ -834,8 +776,7 @@ async function startBot() {
       );
 
       log(
-        "Max Recovery: $" +
-        money(config.maxRecovery)
+        "Recovery: OFF"
       );
 
       requestProposal();
@@ -879,6 +820,10 @@ async function startBot() {
           "WebSocket closed."
         );
 
+        log(
+          "Bot stopped safely."
+        );
+
         stopBot(false);
       }
     };
@@ -906,7 +851,8 @@ function requestProposal() {
   if (
     !running ||
     !ws ||
-    ws.readyState !== WebSocket.OPEN
+    ws.readyState !== WebSocket.OPEN ||
+    waitingForResult
   ) {
 
     return;
@@ -945,76 +891,25 @@ function requestProposal() {
   }
 
 
-  const remainingLossBudget =
-    config.stopLoss + sessionPL;
+  /*
+    IMPORTANT:
+    Every single trade uses exactly
+    the initial stake.
 
+    There is NO recovery.
+    There is NO multiplier.
+    There is NO increasing stake.
+  */
 
-  if (
-    remainingLossBudget <
-    MIN_STAKE
-  ) {
-
-    log(
-      "Remaining loss budget is below the $0.35 minimum stake."
-    );
-
-    log(
-      "Bot stopped safely."
-    );
-
-    stopBot();
-
-    return;
-  }
-
-
-  let stake =
-    Number(currentStake);
-
-
-  if (
-    !Number.isFinite(stake) ||
-    stake < MIN_STAKE
-  ) {
-
-    stake =
-      MIN_STAKE;
-  }
-
-
-  if (
-    stake >
-    remainingLossBudget
-  ) {
-
-    log(
-      "Next stake $" +
-      money(stake) +
-      " exceeds remaining loss budget $" +
-      money(remainingLossBudget) +
-      "."
-    );
-
-    log(
-      "Recovery blocked. Bot stopped safely."
-    );
-
-    stopBot();
-
-    return;
-  }
+  const stake =
+    config.initialStake;
 
 
   waitingForResult = true;
 
 
   log(
-    (
-      recoveryMode
-        ? "RECOVERY"
-        : "NORMAL"
-    ) +
-    " TRADE | Stake $" +
+    "NORMAL TRADE | Fixed Stake $" +
     money(stake)
   );
 
@@ -1055,6 +950,37 @@ function requestProposal() {
 
     })
   );
+
+
+  /*
+    Prevent the bot from waiting forever
+    for a proposal.
+  */
+
+  proposalTimeout =
+    setTimeout(
+      () => {
+
+        if (
+          running &&
+          waitingForResult
+        ) {
+
+          log(
+            "Proposal timeout."
+          );
+
+          log(
+            "Bot stopped safely."
+          );
+
+          stopBot();
+
+        }
+
+      },
+      15000
+    );
 }
 
 
@@ -1063,6 +989,8 @@ function requestProposal() {
 function handleMessage(data) {
 
   if (data.error) {
+
+    clearTradeTimeouts();
 
     log(
       "DERIV ERROR: " +
@@ -1084,6 +1012,12 @@ function handleMessage(data) {
     data.msg_type ===
     "proposal"
   ) {
+
+    if (proposalTimeout) {
+      clearTimeout(proposalTimeout);
+      proposalTimeout = null;
+    }
+
 
     const proposal =
       data.proposal;
@@ -1126,12 +1060,6 @@ function handleMessage(data) {
     );
 
 
-    /*
-      Buy the exact proposal.
-      Deriv's current API accepts the proposal ID
-      and purchase price.
-    */
-
     ws.send(
       JSON.stringify({
 
@@ -1141,7 +1069,7 @@ function handleMessage(data) {
         price:
           Number.isFinite(askPrice)
             ? askPrice
-            : Number(currentStake),
+            : config.initialStake,
 
         req_id:
           Date.now()
@@ -1209,6 +1137,37 @@ function handleMessage(data) {
       })
     );
 
+
+    /*
+      Give the contract enough time to settle,
+      but do not wait forever.
+    */
+
+    contractTimeout =
+      setTimeout(
+        () => {
+
+          if (
+            running &&
+            waitingForResult
+          ) {
+
+            log(
+              "Contract result timeout."
+            );
+
+            log(
+              "Bot stopped safely."
+            );
+
+            stopBot();
+
+          }
+
+        },
+        30000
+      );
+
     return;
   }
 
@@ -1222,7 +1181,6 @@ function handleMessage(data) {
       data.proposal_open_contract;
 
     if (!contract) {
-
       return;
     }
 
@@ -1234,8 +1192,13 @@ function handleMessage(data) {
 
 
     if (!isSold) {
-
       return;
+    }
+
+
+    if (contractTimeout) {
+      clearTimeout(contractTimeout);
+      contractTimeout = null;
     }
 
 
@@ -1288,11 +1251,7 @@ function processResult(contract) {
   updateStats();
 
 
-  const won =
-    profit > 0;
-
-
-  if (won) {
+  if (profit > 0) {
 
     log(
       "WIN | +" +
@@ -1300,31 +1259,6 @@ function processResult(contract) {
       " | Session P/L: $" +
       money(sessionPL)
     );
-
-
-    recoveryMode =
-      false;
-
-
-    currentStake =
-      config.initialStake;
-
-
-    if (
-      sessionPL >=
-      config.takeProfit
-    ) {
-
-      log(
-        "TAKE PROFIT REACHED: +$" +
-        money(sessionPL)
-      );
-
-      stopBot();
-
-      return;
-    }
-
 
   } else {
 
@@ -1334,183 +1268,12 @@ function processResult(contract) {
       " | Session P/L: $" +
       money(sessionPL)
     );
-
-
-    if (
-      sessionPL <=
-      -config.stopLoss
-    ) {
-
-      log(
-        "STOP LOSS REACHED."
-      );
-
-      stopBot();
-
-      return;
-    }
-
-
-    /*
-      Determine the actual payout ratio
-      from the proposal/contract data.
-    */
-
-    const payout =
-      Number(
-        contract.payout
-      );
-
-
-    let payoutRatio =
-      0;
-
-
-    if (
-      Number.isFinite(payout) &&
-      payout > buyPrice &&
-      buyPrice > 0
-    ) {
-
-      payoutRatio =
-        (
-          payout -
-          buyPrice
-        ) /
-        buyPrice;
-
-    } else {
-
-      /*
-        Some responses may not include payout.
-        Fall back to profit/sell data where possible.
-      */
-
-      if (
-        sellPrice > buyPrice &&
-        buyPrice > 0
-      ) {
-
-        payoutRatio =
-          (
-            sellPrice -
-            buyPrice
-          ) /
-          buyPrice;
-      }
-    }
-
-
-    if (
-      payoutRatio <= 0
-    ) {
-
-      log(
-        "Unable to calculate a valid payout ratio."
-      );
-
-      log(
-        "Recovery blocked. Bot stopped safely."
-      );
-
-      stopBot();
-
-      return;
-    }
-
-
-    const deficit =
-      Math.max(
-        0,
-        -sessionPL
-      );
-
-
-    const requiredProfit =
-      deficit +
-      config.takeProfit;
-
-
-    const requiredRecoveryStake =
-      requiredProfit /
-      payoutRatio;
-
-
-    log(
-      "Calculated recovery needed: $" +
-      money(requiredRecoveryStake)
-    );
-
-
-    /*
-      Maximum recovery stake.
-    */
-
-    if (
-      requiredRecoveryStake >
-      config.maxRecovery
-    ) {
-
-      log(
-        "Recovery needed exceeds max recovery of $" +
-        money(config.maxRecovery)
-      );
-
-      log(
-        "Bot stopped safely."
-      );
-
-      stopBot();
-
-      return;
-    }
-
-
-    /*
-      Remaining session loss budget.
-    */
-
-    const remainingLossBudget =
-      config.stopLoss +
-      sessionPL;
-
-
-    if (
-      requiredRecoveryStake >
-      remainingLossBudget
-    ) {
-
-      log(
-        "Recovery would exceed remaining stop-loss budget."
-      );
-
-      log(
-        "Bot stopped safely."
-      );
-
-      stopBot();
-
-      return;
-    }
-
-
-    currentStake =
-      Math.max(
-        MIN_STAKE,
-        requiredRecoveryStake
-      );
-
-
-    recoveryMode =
-      true;
-
-
-    log(
-      "RECOVERY APPROVED | Stake $" +
-      money(currentStake)
-    );
   }
 
+
+  /*
+    TP CHECK
+  */
 
   if (
     sessionPL >=
@@ -1527,6 +1290,10 @@ function processResult(contract) {
     return;
   }
 
+
+  /*
+    SL CHECK
+  */
 
   if (
     sessionPL <=
@@ -1545,8 +1312,8 @@ function processResult(contract) {
 
 
   /*
-    Give Deriv a short gap before requesting
-    the next proposal.
+    Continue with the SAME stake.
+    No recovery.
   */
 
   setTimeout(
@@ -1572,11 +1339,11 @@ function stopBot(
   closeConnection = true
 ) {
 
-  running =
-    false;
+  running = false;
 
-  waitingForResult =
-    false;
+  waitingForResult = false;
+
+  clearTradeTimeouts();
 
   startBtn.disabled =
     !connected;
@@ -1591,9 +1358,7 @@ function stopBot(
   ) {
 
     try {
-
       ws.close();
-
     } catch (error) {}
   }
 
@@ -1608,11 +1373,6 @@ function stopBot(
 
 
 /* BUTTON EVENTS */
-
-/*
-  THIS WAS THE MISSING PART
-  IN THE PREVIOUS VERSION.
-*/
 
 connectBtn.onclick =
   connectDeriv;
@@ -1637,8 +1397,7 @@ checkConnection();
 
 
 /*
-  Check silently every 15 seconds.
-  It no longer floods the log.
+  Check every 15 seconds.
 */
 
 connectionCheckTimer =
